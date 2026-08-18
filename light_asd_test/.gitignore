@@ -1,0 +1,9 @@
+venv/
+bin/
+__pycache__/
+*.pyc
+*.pth
+Light-ASD/demo/
+Light-ASD/weight/*.model
+6DRepNet/
+6DRepNet360/
