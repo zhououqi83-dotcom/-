@@ -1,0 +1,127 @@
+      
+# 公式：def map_range(x, from_min, from_max, to_min, to_max):
+    # '''
+    # 线性映射函数，将 x 从 from_min-from_max 线性映射到 to_min-to_max 区间
+    # '''
+    # x = max(min(x, from_max), from_min)
+    # from_range = from_max - from_min
+    # to_range = to_max - to_min
+    # mapped_value = (x - from_min) * (to_range / from_range) + to_min
+
+# 格式：舵机名字 → {blendshape系数：[blendshape系数, [blendshape范围], [舵机范围]]}
+# 实现：舵机名字 = blendshape系数*map_range(当前blendshape系数, blendshape范围, 舵机范围)
+
+left_blink: # 0.44 0到1逐渐闭眼
+  eyeBlinkLeft: [1, [0, 1], [0, 0.56]] # 实际值范围 [0.44-1]
+  eyeWideLeft:  [1, [0, 1], [0.44, 0]] # 实际值范围 [0.44-0]
+
+right_blink: # 0.44 0到1逐渐闭眼
+  eyeBlinkRight: [1, [0, 1], [0, 0.56]] # 实际值范围 [0.44-1]
+  eyeWideRight:  [1, [0, 1], [0.44, 0]] # 实际值范围 [0.44-0]
+
+left_eye_level: # 0.5 0到0.5中心向右边 0.5到1中心向左边（外边）
+  eyeLookOutLeft: [1, [0, 1], [0, 0.5]] # 实际值范围 0.5 - 1
+  eyeLookInLeft:  [1, [0, 1], [0.5, 0]] # 实际值范围 0.5 - 0
+
+right_eye_level: # 0.5 0到0.5中心向右边 0.5到1中心向左边（里边
+  eyeLookOutRight: [1, [0, 1], [0.5, 0]] # 实际值范围 0.5 - 0
+  eyeLookInRight:  [1, [0, 1], [0, 0.5]] # 实际值范围 0.5 - 1
+
+left_eye_erect:  # 0.5 0到1眼球由上到下
+  eyeLookDownLeft: [1, [0, 1], [0, 0.5]] # 实际值范围 0.5 - 1
+  eyeLookUpLeft:   [1, [0, 1], [0.5, 0]] # 实际值范围 0.5 - 0
+
+right_eye_erect: # 0.5 0到1眼球由上到下
+  eyeLookDownRight : [1, [0, 1], [0, 0.5]] # 实际值范围 0.5 - 1
+  eyeLookUpRight:   [1, [0, 1], [0.5, 0]] # 实际值范围 0.5 - 0
+
+left_eyebrow_erect: #0 0到1眉毛由下到上
+  browInnerUp: [1, [0, 1], [0, 1]] 
+
+right_eyebrow_erect: #0 0到1眉毛由下到上
+  browInnerUp: [1, [0, 1], [0, 1]] 
+
+left_eyebrow_level:  #0 0到1眉毛由外向内
+  browDownLeft: [1, [0, 1], [0, 1]]
+
+right_eyebrow_level:  #0 0到1眉毛由外向内
+  browDownRight: [1, [0, 1], [0, 1]]
+
+# 颈部归一化后blendshape值的线性组合 → 舵机值
+head_bai:  #0.5 0到1从右到左
+  headRoll: [1, [-1, 1], [1, 0]]
+
+head_dian: #0.5 0到1从下到上
+  headPitch: [1, [-0.5, 0.5], [1, 0]] 
+
+head_yao: #0.5 0到1从右到左
+  headYaw: [1, [-1, 1], [0, 1]]
+
+# 颈部弧度值的线性组合 → 舵机值
+# head_dian:
+#   rpy_0: [[-45, 45], [0, 1]]
+
+# head_bai:
+#   rpy_2: [[-45, 45], [1, 0]]
+
+# head_yao:
+#   rpy_1: [[-45, 45], [0, 1]]
+
+jawFrontLeft: # 0.99 0到1由开到闭
+  jawOpen: [1, [0, 1], [1, 0]]
+
+jawFrontRight: # 0.99 0到1由开到闭
+  jawOpen: [1, [0, 1], [1, 0]]
+
+jawBackLeft: #0.5 0到1由前到后
+  jawForward:  [1, [0, 1], [0.5,0]]  # 0.5 0
+  jawLeft:     [1, [0, 1], [0, 0.5]] # 0.5 1
+
+jawBackRight: #0.5 0到1由前到后
+  jawForward:   [1, [0, 1], [0.5,0]]  # 0.5 0
+  jawRight:     [1, [0, 1], [0, 0.5]] # 0.5 1
+
+mouthUpperUpLeft: #0.24 0到1从下到上
+  mouthUpperUpLeft: [1, [0, 1], [0, 0.76]] # 实际值范围 [0.24-1]
+  mouthRollUpper: [1, [0, 1], [0.24, 0]] # 实际值范围 [0.23-0]
+#  mouthPucker: [0.01, [0, 1], [1, 0.8]]
+
+mouthUpperUpRight: #0.24 0到1从下到上
+  mouthUpperUpRight: [1, [0, 1], [0, 0.76]] # 实际值范围 [0.24-1]
+  mouthRollUpper: [1, [0, 1], [0.24, 0]] # 实际值范围 [0.23-0]
+#  mouthPucker: [0.01, [0, 1], [1, 0.8]]
+
+mouthLowerDownLeft: #0.2 0到1从上到下
+  mouthLowerDownLeft: [1, [0, 1], [0, 0.8]] # 实际值范围 [0.2-1]
+  mouthRollLower: [1, [0, 1], [0.2, 0]] # 实际值范围 [0.2-0]
+#  mouthStretchLeft: [1.5, [0, 1], [0.01, 0.8]]
+#  mouthPucker: [0.8, [0, 1], [0.01, 0]]
+
+mouthLowerDownRight: #0.2 0到1从上到下
+  mouthLowerDownRight: [1, [0, 1], [0, 0.8]] # 实际值范围 [0.2-1]
+  mouthRollLower: [1, [0, 1], [0.2, 0]] # 实际值范围 [0.2-0]
+#  mouthStretchRight: [1.5, [0, 1], [0.01, 0.8]]
+#  mouthPucker: [0.8, [0, 1], [0.01, 0]]
+
+mouthCornerUpLeft: #0.23 0到1微笑幅度越大
+  mouthSmileLeft: [1, [0, 1], [0, 0.77]] # 实际值范围 [0.23-1]
+  mouthPucker: [1, [0, 1], [0.23, 0]] # 实际值范围 [0.2-0]
+#  mouthLeft: [0.5, [0, 1], [0.01, 0.65]]
+#  mouthRight: [-1, [0, 1], [0.01, 0.65]]
+
+mouthCornerUpRight: #0.23 0到1微笑幅度越大
+  mouthSmileRight: [1, [0, 1], [0, 0.77]] # 实际值范围 [0.23-1]
+  mouthPucker: [1, [0, 1], [0.23, 0]] # 实际值范围 [0.2-0]
+#  mouthRight: [0.5, [0, 1], [0.01, 0.65]]
+#  mouthLeft: [-1, [0, 1], [0.01, 0.65]]
+
+mouthCornerDownLeft: #0.5 0到1嘴角由下向上
+  mouthFrownLeft: [1, [0, 1], [0.5, 0]] # 实际值范围 [0.5-0]
+  mouthPressLeft: [1, [0, 1], [ 0, 0.5]] # 实际值范围 [0.5-0]  
+#  mouthStretchLeft: [2, [0, 1], [0.6, 0.1]]
+#  mouthPucker: [-1, [0, 1], [0.6, 0.1]]
+
+mouthCornerDownRight: #0.5 0到1嘴角向上
+  mouthFrownRight: [1, [0, 1], [0.5, 0]] # 实际值范围 [0.5-0]
+  mouthPressRight: [1, [0, 1], [ 0, 0.5]] # 实际值范围 [0.5-0]  
+#  mouthStretchRight: [2, [0, 1], [0.6, 0.1]]

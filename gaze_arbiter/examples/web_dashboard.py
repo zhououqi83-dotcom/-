@@ -108,6 +108,14 @@ from gaze_arbiter.input.sound_source import J7034DoaReader, SoundSourceConfig  #
 from gaze_arbiter.output.blink_driver import BlinkDriver, BlinkDriverConfig  # noqa: E402
 from gaze_arbiter.output.head_driver import HeadDriver, HeadDriverConfig  # noqa: E402
 
+# 覆盖 live_demo.py 里的默认值(0.1s)——profile 过 score_tracks() 单人一次
+# 打分里视觉编码器(3D CNN)本身就要 35~100ms(这台机器没有 GPU, 2026-08-19
+# 测的), 5 个人同时到打分点时 0.1s 一轮根本来不及跑完, 是"多人时卡"的根因
+# (batch 合并调用测过没用, 瓶颈是纯计算量)。调大打分间隔直接按比例砍总
+# 计算量, 代价是 is_speaking 信号刷新变慢(仍然是新鲜的, 只是没有原来
+# 那么灵敏)。
+UPDATE_EVERY_SEC = float(os.environ.get("ASD_UPDATE_INTERVAL_S", "0.3"))
+
 PORT = int(os.environ.get("WEB_PORT", "8642"))
 # 断开连接/退出进程时慢速回中的最长阻塞秒数(回中本身约 1~1.5s, 留余量; 设 0 立即断开)
 RECENTER_EXIT_MAX_S = float(os.environ.get("RECENTER_EXIT_MAX_S", "3.0"))
@@ -120,33 +128,55 @@ HEAD_MOVING_FRAC_THRESHOLD = 0.004
 def score_tracks(tracks, audio: AudioStreamer, asd: ASD) -> None:
     """给每个够格的 track 打一次 ASD 分数.
 
-    **原样复制自 `light_asd_test/Light-ASD/live_demo.py::main()`**(那段代码
-    写在 main() 函数体内, 不是独立函数, 没法直接 import)。`run_with_face.py`
-    里也有同一份复制, 两边要一起同步。
+    跟 `light_asd_test/Light-ASD/live_demo.py::main()`(以及 `run_with_face.py`
+    里同一份复制)算的是同一件事, 但这里把多个人的模型前向合并成了一次 batch
+    调用——CPU 上跑模型, 单次调用的固定开销(Python/张量构造/kernel launch)
+    不小, 原来是几个人来几次串行调用, 人一多主循环就卡一下(2026-08-19 定位:
+    多人时明显卡顿的主因); 同一时刻"到期"的 track 大概率处于同一个稳定
+    WINDOW_SEC 窗口长度(只有刚出现、缓冲区还没攒满的 track 例外, 数量少),
+    按窗口长度分组后堆成 batch 一起过模型, 结果跟逐个跑数值上完全一致(模型
+    在 eval() 模式, BatchNorm/GRU 都不会跨样本互相影响), 只是调用次数从 N
+    次变成"分组数"次(绝大多数情况下就是 1 次)。
     """
     now = time.time()
-    araw = None
-    for t in tracks:
-        if (now - t.last_update) >= UPDATE_EVERY_SEC and len(t.video_buf) >= int(VIDEO_FPS * 0.4):
-            t.last_update = now
-            vfeat = np.array(t.video_buf)[-int(VIDEO_FPS * WINDOW_SEC):]
-            if araw is None:
-                araw = audio.get_last_seconds(WINDOW_SEC)
-            if len(araw) > AUDIO_SR * 0.3:
-                mfcc = python_speech_features.mfcc(
-                    araw, AUDIO_SR, numcep=13, winlen=0.025, winstep=0.010)
-                length = min((mfcc.shape[0] - mfcc.shape[0] % 4) / 100, vfeat.shape[0] / VIDEO_FPS)
-                if length > 0.2:
-                    a = mfcc[:int(round(length * 100)), :]
-                    v = vfeat[-int(round(length * VIDEO_FPS)):]
-                    with torch.no_grad():
-                        inputA = torch.FloatTensor(a).unsqueeze(0).to(DEVICE)
-                        inputV = torch.FloatTensor(v).unsqueeze(0).to(DEVICE)
-                        embedA = asd.model.forward_audio_frontend(inputA)
-                        embedV = asd.model.forward_visual_frontend(inputV)
-                        out = asd.model.forward_audio_visual_backend(embedA, embedV)
-                        score = asd.lossAV.forward(out, labels=None)
-                    t.last_score = float(score[-1])
+    due = [t for t in tracks
+           if (now - t.last_update) >= UPDATE_EVERY_SEC and len(t.video_buf) >= int(VIDEO_FPS * 0.4)]
+    if not due:
+        return
+    for t in due:
+        t.last_update = now  # 不管这轮最终有没有真的打上分, 都按周期计时, 跟原来行为一致
+
+    araw = audio.get_last_seconds(WINDOW_SEC)
+    if len(araw) <= AUDIO_SR * 0.3:
+        return
+    mfcc = python_speech_features.mfcc(araw, AUDIO_SR, numcep=13, winlen=0.025, winstep=0.010)
+
+    # 按 v 的帧数分组——同一 batch 里所有样本的时间长度必须一致, 模型不支持
+    # 变长 batch。mfcc 是同一段音频, 组内的 a 也完全相同(只是切片长度一样)。
+    groups: dict[int, list] = {}
+    for t in due:
+        vfeat = np.array(t.video_buf)[-int(VIDEO_FPS * WINDOW_SEC):]
+        length = min((mfcc.shape[0] - mfcc.shape[0] % 4) / 100, vfeat.shape[0] / VIDEO_FPS)
+        if length <= 0.2:
+            continue
+        n_v = int(round(length * VIDEO_FPS))
+        n_a = int(round(length * 100))
+        groups.setdefault(n_v, []).append((t, vfeat[-n_v:], n_a))
+
+    for items in groups.values():
+        n_a = items[0][2]
+        a_batch = np.repeat(mfcc[:n_a, :][None, :, :], len(items), axis=0)
+        v_batch = np.stack([v for _, v, _ in items], axis=0)
+        with torch.no_grad():
+            inputA = torch.FloatTensor(a_batch).to(DEVICE)
+            inputV = torch.FloatTensor(v_batch).to(DEVICE)
+            embedA = asd.model.forward_audio_frontend(inputA)
+            embedV = asd.model.forward_visual_frontend(inputV)
+            out = asd.model.forward_audio_visual_backend(embedA, embedV)
+            scores = asd.lossAV.forward(out, labels=None)  # numpy, 形状 [len(items) * T]
+        scores = scores.reshape(len(items), -1)  # -> [len(items), T], 每行对应一个 track
+        for (t, _, _), s in zip(items, scores):
+            t.last_score = float(s[-1])
 
 
 class SharedState:

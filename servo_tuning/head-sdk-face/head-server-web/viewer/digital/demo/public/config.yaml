@@ -1,0 +1,24 @@
+# Remote viewer / control hub shared defaults
+
+hub:
+  publicUrl: "http://127.0.0.1:8765"
+  host: "127.0.0.1"
+  port: 8765
+  autoConnectOnLoad: true
+
+robot:
+  host: "127.0.0.1"
+  port: 2543
+  avatarControlOnLoad: false
+
+stream:
+  websocketPath: "/ws"
+  controlRobotOnLoad: false
+  robotForwardIntervalMs: 80
+
+viewer:
+  expressionResetMs: 1200
+  coefficientConfigUrl: "./blendshape-config.yaml"
+
+backend:
+  adapterConfigPath: "../viewer/robot/robot-adapter.yaml"

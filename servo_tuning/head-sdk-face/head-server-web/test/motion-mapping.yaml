@@ -1,0 +1,136 @@
+# Legacy TalkingHead / motion-library keys -> canonical 61-coefficient transport keys.
+# Values accumulate, so a shared smile + one-sided smile can both contribute.
+
+mappings:
+  eyeBlinkLeft:
+    EyeBlinkLeft: 1
+  eyeLookDownLeft:
+    EyeLookDownLeft: 1
+  eyeLookInLeft:
+    EyeLookInLeft: 1
+  eyeLookOutLeft:
+    EyeLookOutLeft: 1
+  eyeLookUpLeft:
+    EyeLookUpLeft: 1
+  eyeSquintLeft:
+    EyeSquintLeft: 1
+  eyeWideLeft:
+    EyeWideLeft: 1
+
+  eyeBlinkRight:
+    EyeBlinkRight: 1
+  eyeLookDownRight:
+    EyeLookDownRight: 1
+  eyeLookInRight:
+    EyeLookInRight: 1
+  eyeLookOutRight:
+    EyeLookOutRight: 1
+  eyeLookUpRight:
+    EyeLookUpRight: 1
+  eyeSquintRight:
+    EyeSquintRight: 1
+  eyeWideRight:
+    EyeWideRight: 1
+
+  jawForward:
+    JawForward: 1
+  jawOpen:
+    JawOpen: 1
+
+  mouthClose:
+    MouthClose: 1
+  mouthFunnel:
+    MouthFunnel: 1
+  mouthPucker:
+    MouthPucker: 1
+  mouthLeft:
+    MouthLeft: 1
+  mouthRight:
+    MouthRight: 1
+  mouthSmile:
+    MouthSmileLeft: 1
+    MouthSmileRight: 1
+  mouthSmileLeft:
+    MouthSmileLeft: 1
+  mouthSmileRight:
+    MouthSmileRight: 1
+  mouthFrownLeft:
+    MouthFrownLeft: 1
+  mouthFrownRight:
+    MouthFrownRight: 1
+  mouthDimpleLeft:
+    MouthDimpleLeft: 1
+  mouthDimpleRight:
+    MouthDimpleRight: 1
+  mouthStretchLeft:
+    MouthStretchLeft: 1
+  mouthStretchRight:
+    MouthStretchRight: 1
+  mouthRollLower:
+    MouthRollLower: 1
+  mouthRollUpper:
+    MouthRollUpper: 1
+  mouthShrugLower:
+    MouthShrugLower: 1
+  mouthShrugUpper:
+    MouthShrugUpper: 1
+  mouthPressLeft:
+    MouthPressLeft: 1
+  mouthPressRight:
+    MouthPressRight: 1
+  mouthLowerDownLeft:
+    MouthLowerDownLeft: 1
+  mouthLowerDownRight:
+    MouthLowerDownRight: 1
+  mouthUpperUpLeft:
+    MouthUpperUpLeft: 1
+  mouthUpperUpRight:
+    MouthUpperUpRight: 1
+  mouthOpen:
+    JawOpen: 1
+  viseme_U:
+    MouthPucker: 1
+
+  browDownLeft:
+    BrowDownLeft: 1
+  browDownRight:
+    BrowDownRight: 1
+  browInnerUp:
+    BrowInnerUp: 1
+  browOuterUpLeft:
+    BrowOuterUpLeft: 1
+  browOuterUpRight:
+    BrowOuterUpRight: 1
+
+  cheekPuff:
+    CheekPuff: 1
+  cheekSquintLeft:
+    CheekSquintLeft: 1
+  cheekSquintRight:
+    CheekSquintRight: 1
+  noseSneerLeft:
+    NoseSneerLeft: 1
+  noseSneerRight:
+    NoseSneerRight: 1
+  tongueOut:
+    TongueOut: 1
+
+  headRotateX:
+    HeadPitch: 1
+  headRotateY:
+    HeadYaw: 1
+  headRotateZ:
+    HeadRoll: 1
+
+  eyesClosed:
+    EyeBlinkLeft: 1
+    EyeBlinkRight: 1
+  eyesLookUp:
+    EyeLookUpLeft: 1
+    EyeLookUpRight: 1
+  eyesRotateX:
+    LeftEyePitch: 1
+    RightEyePitch: 1
+  eyesRotateY:
+    LeftEyeYaw: 1
+    RightEyeYaw: 1

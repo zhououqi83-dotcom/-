@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package headarkit;
+
+message Empty {}
+
+message HeadArkitMessage {
+    string servo_json = 1; 
+}
+
+// servo_json -- 示例 {"mouthUpperUpLeft":0.5,"mouthUpperUpRight":0.1...} 舵机参数
+
+service HeadArkitStream {
+    rpc SetHeadState    (HeadArkitMessage) returns (Empty);
+    rpc GetHeadState    (Empty) returns (HeadArkitMessage);
+    rpc ReleaseControl  (Empty) returns (Empty) {};
+}
+
+

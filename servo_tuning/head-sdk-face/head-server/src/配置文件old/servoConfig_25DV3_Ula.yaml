@@ -1,0 +1,28 @@
+controllers:
+  - port: /dev/ttyACM0  # Head Controller
+    servos:
+      - { name: 'left_blink'           , id: 107, jdStart: 1500, jdMax: 2000, jdMin: 1100, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'left_eye_erect'       , id: 104, jdStart: 1500, jdMax: 1800, jdMin: 1200, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'left_eye_level'       , id: 103, jdStart: 1500, jdMax: 1750, jdMin: 1250, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'left_eyebrow_erect'   , id: 105, jdStart: 1500, jdMax: 1500, jdMin: 1200, fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'left_eyebrow_level'   , id: 106, jdStart: 1500, jdMax: 2300, jdMin: 1500, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'right_blink'          , id: 207, jdStart: 1500, jdMax: 1900, jdMin: 1000, fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'right_eye_erect'      , id: 204, jdStart: 1500, jdMax: 1800, jdMin: 1200, fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'right_eye_level'      , id: 203, jdStart: 1500, jdMax: 1750, jdMin: 1250, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'right_eyebrow_erect'  , id: 205, jdStart: 1500, jdMax: 1800, jdMin: 1500, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'right_eyebrow_level'  , id: 206, jdStart: 1500, jdMax: 1500, jdMin: 800 , fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'head_dian'            , id: 101, jdStart: 1500, jdMax: 2500, jdMin: 500 , fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'head_yao'             , id: 202, jdStart: 1500, jdMax: 2500, jdMin: 500 , fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'head_bai'             , id: 102, jdStart: 1500, jdMax: 2500, jdMin: 500 , fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'mouthUpperUpLeft'     , id: 112, jdStart: 1500, jdMax: 2300, jdMin: 1250, fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'mouthUpperUpRight'    , id: 212, jdStart: 1500, jdMax: 1750, jdMin: 700 , fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'mouthLowerDownLeft'   , id: 213, jdStart: 1500, jdMax: 1900, jdMin: 1400, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'mouthLowerDownRight'  , id: 113, jdStart: 1500, jdMax: 1600, jdMin: 1100, fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'mouthCornerUpLeft'    , id: 110, jdStart: 1500, jdMax: 1800, jdMin: 500 , fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'mouthCornerUpRight'   , id: 210, jdStart: 1500, jdMax: 2500, jdMin: 1200, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'mouthCornerDownLeft'  , id: 111, jdStart: 1500, jdMax: 2000, jdMin: 1000, fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'mouthCornerDownRight' , id: 211, jdStart: 1500, jdMax: 2000, jdMin: 1000, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'jawFrontLeft'         , id: 108, jdStart: 1500, jdMax: 1800, jdMin: 1500, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'jawFrontRight'        , id: 208, jdStart: 1500, jdMax: 1500, jdMin: 1200, fScale: 1, fOffSet: 0, pos: 0, dir: 1 }
+      - { name: 'jawBackLeft'          , id: 109, jdStart: 1500, jdMax: 2000, jdMin: 1000, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
+      - { name: 'jawBackRight'         , id: 209, jdStart: 1500, jdMax: 2000, jdMin: 1000, fScale: 1, fOffSet: 0, pos: 0, dir: 1 }

@@ -1,0 +1,75 @@
+# Robot-side blendshape adaptation before bs2servo mapping.
+# This layer is intentionally independent from the Hub transport logic.
+# Rules are loaded once by the robot compensator manager.
+
+eyelidCoupling:
+  enabled: true
+  rules:
+    leftEyeOpenFromBrow:
+      enabled: true
+      target: EyeWideLeft
+      minDelta: 0
+      maxDelta: 0.25
+      sources:
+        BrowInnerUp: 0.08
+        BrowOuterUpLeft: 0.18
+
+    rightEyeOpenFromBrow:
+      enabled: true
+      target: EyeWideRight
+      minDelta: 0
+      maxDelta: 0.25
+      sources:
+        BrowInnerUp: 0.08
+        BrowOuterUpRight: 0.18
+
+    leftEyeCloseFromBrow:
+      enabled: true
+      target: EyeBlinkLeft
+      minDelta: 0
+      maxDelta: 0.6
+      sources:
+        BrowDownLeft: 0.6
+
+    rightEyeCloseFromBrow:
+      enabled: true
+      target: EyeBlinkRight
+      minDelta: 0
+      maxDelta: 0.6
+      sources:
+        BrowDownRight: 0.6
+
+eyeLookEyelidCoupling:
+  enabled: true
+  rules:
+    leftEyeOpenFromLookUp:
+      enabled: true
+      target: EyeWideLeft
+      minDelta: 0
+      maxDelta: 0.12
+      sources:
+        EyeLookUpLeft: 0.12
+
+    rightEyeOpenFromLookUp:
+      enabled: true
+      target: EyeWideRight
+      minDelta: 0
+      maxDelta: 0.12
+      sources:
+        EyeLookUpRight: 0.12
+
+    leftEyeCloseFromLookDown:
+      enabled: true
+      target: EyeBlinkLeft
+      minDelta: 0
+      maxDelta: 0.12
+      sources:
+        EyeLookDownLeft: 0.12
+
+    rightEyeCloseFromLookDown:
+      enabled: true
+      target: EyeBlinkRight
+      minDelta: 0
+      maxDelta: 0.12
+      sources:
+        EyeLookDownRight: 0.12

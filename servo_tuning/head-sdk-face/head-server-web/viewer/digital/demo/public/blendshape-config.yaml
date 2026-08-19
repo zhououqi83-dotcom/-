@@ -1,0 +1,502 @@
+# Canonical 61-coefficient transport definition.
+# Viewer sliders follow this order.
+# `targets` map canonical coefficients to TalkingHead avatar morph keys.
+# `positiveTargets` / `negativeTargets` split signed values into one-sided morph targets.
+
+coefficients:
+  EyeBlinkLeft:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeBlinkLeft: 1
+  EyeLookDownLeft:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeLookDownLeft: 1
+  EyeLookInLeft:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeLookInLeft: 1
+  EyeLookOutLeft:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeLookOutLeft: 1
+  EyeLookUpLeft:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeLookUpLeft: 1
+  EyeSquintLeft:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeSquintLeft: 1
+  EyeWideLeft:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeWideLeft: 1
+
+  EyeBlinkRight:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeBlinkRight: 1
+  EyeLookDownRight:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeLookDownRight: 1
+  EyeLookInRight:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeLookInRight: 1
+  EyeLookOutRight:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeLookOutRight: 1
+  EyeLookUpRight:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeLookUpRight: 1
+  EyeSquintRight:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeSquintRight: 1
+  EyeWideRight:
+    group: eyes
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      eyeWideRight: 1
+
+  JawForward:
+    group: jaw
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      jawForward: 1
+  JawLeft:
+    group: jaw
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+  JawRight:
+    group: jaw
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+  JawOpen:
+    group: jaw
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      jawOpen: 1
+
+  MouthClose:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthClose: 1
+  MouthFunnel:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthFunnel: 1
+  MouthPucker:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthPucker: 1
+  MouthLeft:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthLeft: 1
+  MouthRight:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthRight: 1
+  MouthSmileLeft:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthSmileLeft: 1
+  MouthSmileRight:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthSmileRight: 1
+  MouthFrownLeft:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthFrownLeft: 1
+  MouthFrownRight:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthFrownRight: 1
+  MouthDimpleLeft:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthDimpleLeft: 1
+  MouthDimpleRight:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthDimpleRight: 1
+  MouthStretchLeft:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthStretchLeft: 1
+  MouthStretchRight:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthStretchRight: 1
+  MouthRollLower:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthRollLower: 1
+  MouthRollUpper:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthRollUpper: 1
+  MouthShrugLower:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthShrugLower: 1
+  MouthShrugUpper:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthShrugUpper: 1
+  MouthPressLeft:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthPressLeft: 1
+  MouthPressRight:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthPressRight: 1
+  MouthLowerDownLeft:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthLowerDownLeft: 1
+  MouthLowerDownRight:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthLowerDownRight: 1
+  MouthUpperUpLeft:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthUpperUpLeft: 1
+  MouthUpperUpRight:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      mouthUpperUpRight: 1
+
+  BrowDownLeft:
+    group: brow
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      browDownLeft: 1
+  BrowDownRight:
+    group: brow
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      browDownRight: 1
+  BrowInnerUp:
+    group: brow
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      browInnerUp: 1
+  BrowOuterUpLeft:
+    group: brow
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      browOuterUpLeft: 1
+  BrowOuterUpRight:
+    group: brow
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      browOuterUpRight: 1
+
+  CheekPuff:
+    group: cheek
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      cheekPuff: 1
+  CheekSquintLeft:
+    group: cheek
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      cheekSquintLeft: 1
+  CheekSquintRight:
+    group: cheek
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      cheekSquintRight: 1
+  NoseSneerLeft:
+    group: cheek
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      noseSneerLeft: 1
+  NoseSneerRight:
+    group: cheek
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      noseSneerRight: 1
+  TongueOut:
+    group: mouth
+    min: 0
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      tongueOut: 1
+
+  HeadYaw:
+    group: head
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      headRotateY: 1
+  HeadPitch:
+    group: head
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      headRotateX: 1
+  HeadRoll:
+    group: head
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: true
+    targets:
+      headRotateZ: 1
+
+  LeftEyeYaw:
+    group: eye_pose
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: false
+    positiveTargets:
+      eyeLookOutLeft: 1
+    negativeTargets:
+      eyeLookInLeft: 1
+  LeftEyePitch:
+    group: eye_pose
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: false
+    positiveTargets:
+      eyeLookUpLeft: 1
+    negativeTargets:
+      eyeLookDownLeft: 1
+  LeftEyeRoll:
+    group: eye_pose
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: false
+
+  RightEyeYaw:
+    group: eye_pose
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: false
+    positiveTargets:
+      eyeLookOutRight: 1
+    negativeTargets:
+      eyeLookInRight: 1
+  RightEyePitch:
+    group: eye_pose
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: false
+    positiveTargets:
+      eyeLookUpRight: 1
+    negativeTargets:
+      eyeLookDownRight: 1
+  RightEyeRoll:
+    group: eye_pose
+    min: -1
+    max: 1
+    step: 0.01
+    forwardToRobot: false

@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>舵机自由度拖调 - HeadSDK</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00d4ff;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .card {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-disconnected {
+            background: rgba(255, 100, 100, 0.3);
+            color: #ff6464;
+        }
+
+        .status-connected {
+            background: rgba(100, 255, 100, 0.3);
+            color: #64ff64;
+        }
+
+        .status-connecting {
+            background: rgba(255, 200, 100, 0.3);
+            color: #ffc864;
+        }
+
+        /* Connection Section */
+        .connection-form {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .input-group input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #fff;
+            font-size: 14px;
+            width: 120px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-danger {
+            background: rgba(255, 100, 100, 0.3);
+            color: #ff6464;
+            border: 1px solid rgba(255, 100, 100, 0.5);
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 100, 100, 0.5);
+        }
+
+        .btn-danger:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Servo Info */
+        .servo-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .servo-count {
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        /* Servo Sliders */
+        .servo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .servo-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .servo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .servo-name {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .servo-value {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .servo-range {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .servo-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .servo-range::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+            vertical-align: middle;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #555;
+            transition: .3s;
+            border-radius: 20px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider { background-color: #00d4ff; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); }
+
+        /* Disabled slider style */
+        .servo-range.disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Individual control toggle */
+        .item-toggle {
+            position: relative;
+            width: 32px;
+            height: 16px;
+            margin-left: 6px;
+        }
+        .item-toggle input { opacity: 0; width: 0; height: 0; }
+        .item-toggle .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #555;
+            transition: .3s;
+            border-radius: 20px;
+        }
+        .item-toggle .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 12px;
+            width: 12px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        .item-toggle input:checked + .toggle-slider { background-color: #00d4ff; }
+        .item-toggle input:checked + .toggle-slider:before { transform: translateX(16px); }
+        .item-toggle input:disabled + .toggle-slider { opacity: 0.5; }
+
+        /* Control Buttons */
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        /* Log */
+        .log-container {
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        .log-info { color: #64ff64; }
+        .log-error { color: #ff6464; }
+        .log-warn { color: #ffc864; }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #00d4ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="grid-column: 1 / -1;">🎛️ 自由度拖调</h1>
+
+        <!-- Left Panel: BlendShape Control -->
+        <div class="card" style="height: fit-content;">
+            <div class="card-header">
+                <span class="card-title">BlendShape61</span>
+            </div>
+            <!-- 网页仿生人连接 -->
+            <div style="margin:15px 0;padding:10px;background:rgba(0,212,255,0.05);border-radius:8px;border:1px solid rgba(0,212,255,0.2);">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span style="font-size:13px;color:#00d4ff;">网页仿生人:</span>
+                    <input type="text" id="digital-host" value="localhost" placeholder="主机" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;padding:4px 8px;color:#fff;font-size:12px;width:100px;">
+                    <input type="number" id="digital-port" value="8765" placeholder="端口" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;padding:4px 8px;color:#fff;font-size:12px;width:80px;">
+                    <button id="btn-digital-connect" class="btn btn-secondary" onclick="connectDigital()" style="padding:4px 12px;font-size:12px;">连接</button>
+                    <button id="btn-digital-disconnect" class="btn btn-danger" onclick="disconnectDigital()" disabled style="padding:4px 12px;font-size:12px;">断开</button>
+                    <span id="digital-status" style="font-size:11px;color:#666;">未连接</span>
+                </div>
+            </div>
+            <!-- 机器人控制开关 -->
+            <div style="margin:15px 0;padding:10px;background:rgba(0,212,255,0.05);border-radius:8px;border:1px solid rgba(0,212,255,0.2);">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:13px;color:#00d4ff;">机器人控制:</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="robot-control-toggle" checked onchange="toggleBltorobotControl(this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span id="robot-control-status" style="font-size:11px;color:#64ff64;">已启用</span>
+                </div>
+            </div>
+            <!-- 映射文件管理 -->
+            <div style="margin:15px 0;padding:10px;background:rgba(0,212,255,0.05);border-radius:8px;border:1px solid rgba(0,212,255,0.2);">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <span style="font-size:13px;color:#00d4ff;">映射文件:</span>
+                    <select id="yaml-file-path" style="flex:1;background:#2a2a3a;color:#fff;border:1px solid #444;border-radius:4px;padding:2px 6px;font-size:11px;" onchange="readYamlContent()">
+                        <option value="">-- 选择映射文件 --</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="loadMappingFile()">加载映射</button>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <textarea id="yaml-content" style="width:100%;height:200px;background:#1a1a2a;color:#fff;border:1px solid #444;border-radius:4px;padding:8px;font-family:monospace;font-size:11px;resize:vertical;" placeholder="映射文件内容..."></textarea>
+                </div>
+                <div style="display:flex;gap:10px;margin-bottom:10px;">
+                    <button class="btn btn-primary" onclick="saveYamlContent()">覆盖原映射</button>
+                    <button class="btn btn-secondary" onclick="saveYamlContentAs()">另存映射</button>
+                </div>
+            </div>
+            <div id="bs-container">
+                <div class="empty-state"><p>请先加载映射文件</p></div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Servo Control -->
+        <div>
+        <!-- Connection Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">机器人连接</span>
+                <span id="connection-status" class="status-badge status-disconnected">未连接</span>
+            </div>
+            <div class="connection-form">
+                <div class="input-group">
+                    <label for="robot-host">地址:</label>
+                    <input type="text" id="robot-host" value="localhost" placeholder="localhost">
+                </div>
+                <div class="input-group">
+                    <label for="robot-port">端口:</label>
+                    <input type="number" id="robot-port" value="2543" placeholder="2543">
+                </div>
+                <button id="btn-connect" class="btn btn-primary" onclick="connect()">连接</button>
+                <button id="btn-disconnect" class="btn btn-danger" onclick="disconnect()" disabled>断开</button>
+            </div>
+            <div id="connection-log" class="log-container" style="margin-top: 15px; max-height: 80px;">
+                <div class="log-entry log-info">请输入机器人地址和端口，点击连接</div>
+            </div>
+        </div>
+
+        <!-- Servo Sliders Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">舵机滑块</span>
+                <div style="flex:1"></div>
+                <button class="btn btn-secondary" onclick="requestServoState()">刷新</button>
+                <span style="font-size:12px;color:#aaa;margin-left:8px;line-height:20px;">控制</span>
+                <label class="toggle-switch" style="margin-left:4px;">
+                    <input type="checkbox" id="control-toggle" checked onchange="toggleControl(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="servo-info">
+                <span>舵机数量: <span id="servo-count" class="servo-count">--</span></span>
+                <span>最后更新: <span id="last-update">--</span></span>
+            </div>
+            <div id="servo-container">
+                <div class="empty-state">
+                    <p>请先连接机器人以加载舵机配置</p>
+                </div>
+            </div>
+            <div class="control-buttons">
+                <button class="btn btn-secondary" onclick="resetAllSliders()">重置所有</button>
+                <button class="btn btn-primary" onclick="saveAsJson()">保存配置</button>
+                <button class="btn btn-secondary" onclick="loadFromJson()">加载配置</button>
+            </div>
+        </div>
+
+        <!-- Log Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">操作日志</span>
+            </div>
+            <div id="log-container" class="log-container">
+                <div class="log-entry log-info">系统就绪</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let ws = null;
+        let isConnected = false;
+        let servoNames = [];
+        let currentServoValues = {};
+        let initialServoValues = {};  // 连接时保存的初始位置
+        let pendingUpdates = {};
+        let controlEnabled = true;  // 控制开关
+        let bsNames = [];  // 61 维 blendshape 名称列表
+        let currentBSValues = {};  // 当前 blendshape 值
+        let robotRetryCount = 0;  // 机器人连接重试计数
+        let bsControlEnabled = {};  // 单个 blendshape 控制开关 {name: bool}
+        let servoControlEnabled = {};  // 单个舵机控制开关 {name: bool}
+        let blToRobotControlEnabled = true;  // blendshapes 控制舵机开关
+
+        // 网页仿生人 WebSocket
+        let wsDigital = null;
+        let digitalConnected = false;
+
+        // DOM Elements
+        const connectionStatus = document.getElementById('connection-status');
+        const btnConnect = document.getElementById('btn-connect');
+        const btnDisconnect = document.getElementById('btn-disconnect');
+        const servoContainer = document.getElementById('servo-container');
+        const servoCount = document.getElementById('servo-count');
+        const lastUpdate = document.getElementById('last-update');
+        const logContainer = document.getElementById('log-container');
+        const connectionLog = document.getElementById('connection-log');
+
+        // Logging functions
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function addConnectionLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            connectionLog.appendChild(entry);
+            connectionLog.scrollTop = connectionLog.scrollHeight;
+        }
+
+        // WebSocket Connection
+        function connect() {
+            const host = document.getElementById('robot-host').value.trim();
+            const port = document.getElementById('robot-port').value.trim();
+
+            // 连接WebSocket服务器
+            const wsHost = host === 'localhost' || host === '127.0.0.1' ? 'localhost' : host;
+            const wsUrl = `ws://localhost:8766`;  // servo_server 默认端口
+
+            addConnectionLog(`正在连接 ${wsUrl}...`, 'warn');
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                addConnectionLog('WebSocket连接成功，正在连接机器人...', 'info');
+
+                // 发送连接机器人命令
+                ws.send(JSON.stringify({
+                    type: 'connect',
+                    host: host,
+                    port: parseInt(port) || 2543
+                }));
+            };
+
+            ws.onclose = () => {
+                isConnected = false;
+                updateConnectionUI(false);
+                addConnectionLog('WebSocket连接已关闭', 'warn');
+                addLog('与服务器断开连接', 'warn');
+                ws = null;
+            };
+
+            ws.onerror = (error) => {
+                addConnectionLog('WebSocket错误', 'error');
+                addLog('WebSocket连接错误', 'error');
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data);
+                } catch (e) {
+                    console.error('Parse error:', e);
+                }
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.send(JSON.stringify({ type: 'disconnect' }));
+                ws.close();
+                ws = null;
+            }
+            isConnected = false;
+            updateConnectionUI(false);
+            addLog('已断开连接', 'info');
+        }
+
+        // 网页仿生人 WebSocket 连接
+        function connectDigital() {
+            const host = document.getElementById('digital-host').value.trim() || 'localhost';
+            const port = document.getElementById('digital-port').value.trim() || '8765';
+            const url = `ws://${host}:${port}`;
+
+            addLog(`正在连接网页仿生人 ${url}...`, 'info');
+
+            wsDigital = new WebSocket(url);
+
+            wsDigital.onopen = () => {
+                digitalConnected = true;
+                updateDigitalUI(true);
+                addLog('网页仿生人连接成功', 'info');
+            };
+
+            wsDigital.onclose = () => {
+                digitalConnected = false;
+                updateDigitalUI(false);
+                addLog('网页仿生人连接已关闭', 'warn');
+                wsDigital = null;
+            };
+
+            wsDigital.onerror = (error) => {
+                addLog('网页仿生人连接错误', 'error');
+            };
+
+            wsDigital.onmessage = (event) => {
+                // 网页仿生人一般不需要响应消息
+                console.log('Digital human message:', event.data);
+            };
+        }
+
+        function disconnectDigital() {
+            if (wsDigital) {
+                wsDigital.close();
+                wsDigital = null;
+            }
+            digitalConnected = false;
+            updateDigitalUI(false);
+            addLog('已断开网页仿生人', 'info');
+        }
+
+        function updateDigitalUI(connected) {
+            document.getElementById('btn-digital-connect').disabled = connected;
+            document.getElementById('btn-digital-disconnect').disabled = !connected;
+            const status = document.getElementById('digital-status');
+            if (connected) {
+                status.textContent = '已连接';
+                status.style.color = '#64ff64';
+            } else {
+                status.textContent = '未连接';
+                status.style.color = '#666';
+            }
+        }
+
+        // 将 Title Case 键名转换为小写开头（网页仿生人需要的格式）
+        function toLowercaseFirstKey(obj) {
+            const result = {};
+            for (const [key, value] of Object.entries(obj)) {
+                if (key && value !== undefined) {
+                    const lowerKey = key.charAt(0).toLowerCase() + key.slice(1);
+                    result[lowerKey] = value;
+                }
+            }
+            return result;
+        }
+
+        function handleMessage(data) {
+            if (data.type === 'connection_status') {
+                isConnected = data.connected;
+                updateConnectionUI(data.connected);
+
+                if (data.connected) {
+                    robotRetryCount = 0;
+                    addConnectionLog(`已连接到 ${data.host}:${data.port}`, 'info');
+                    addLog(`已连接到机器人 ${data.host}:${data.port}`, 'info');
+                    // 重置初始值标记，等待新的舵机状态
+                    initialServoValues = {};
+                    currentServoValues = {};
+                    // 开始获取舵机数据（最多重试4次）
+                    ws._servoRetryCount = 0;
+                    ws._waitingForServoState = true;
+                    requestServoState();
+                    // 获取 yaml 文件列表
+                    requestYamlFileList();
+                } else {
+                    robotRetryCount++;
+                    if (robotRetryCount >= 2) {
+                        addConnectionLog('机器人连接失败', 'error');
+                        addLog('机器人连接失败', 'error');
+                        robotRetryCount = 0;
+                    } else {
+                        addConnectionLog(`机器人连接失败，尝试重连 (${robotRetryCount}/2)...`, 'warn');
+                        // 重新发送连接命令
+                        const host = document.getElementById('robot-host').value.trim();
+                        const port = parseInt(document.getElementById('robot-port').value.trim()) || 2543;
+                        ws.send(JSON.stringify({ type: 'connect', host, port }));
+                    }
+                }
+            }
+            else if (data.type === 'servo_state') {
+                updateServoState(data);
+            }
+            else if (data.type === 'set_servo_response') {
+                if (!data.success) {
+                    addLog(`设置舵机 ${data.name} 失败`, 'error');
+                }
+            }
+            else if (data.type === 'set_servo_batch_response') {
+                if (!data.success) {
+                    addLog('批量设置舵机失败', 'error');
+                }
+            }
+            else if (data.type === 'mapping_loaded') {
+                if (data.success) {
+                    bsNames = data.blendshapes;
+                    generateBSsliders(bsNames);
+                    addLog(`映射加载成功，共 ${bsNames.length} 个 blendshape`, 'info');
+                } else {
+                    addLog(`映射加载失败: ${data.error}`, 'error');
+                }
+            }
+            else if (data.type === 'set_blendshape_response') {
+                if (!data.success) {
+                    addLog('Blendshape 控制失败', 'error');
+                }
+                // 更新右侧 servo 滑块UI（服务端已过滤禁用舵机）
+                if (data.servos) {
+                    for (const [name, value] of Object.entries(data.servos)) {
+                        const slider = document.getElementById(`slider-${name}`);
+                        const valueLabel = document.getElementById(`value-${name}`);
+                        if (slider) slider.value = value;
+                        if (valueLabel) valueLabel.textContent = parseFloat(value).toFixed(2);
+                    }
+                }
+            }
+            else if (data.type === 'yaml_file_list') {
+                const select = document.getElementById('yaml-file-path');
+                // 保留第一个空选项
+                select.innerHTML = '<option value="">-- 选择映射文件 --</option>';
+                if (data.files && data.files.length > 0) {
+                    data.files.forEach(file => {
+                        const opt = document.createElement('option');
+                        opt.value = file;
+                        opt.textContent = file; // 显示完整路径
+                        select.appendChild(opt);
+                    });
+                    addLog(`找到 ${data.files.length} 个 yaml 映射文件`, 'info');
+                } else {
+                    addLog('未找到 yaml 映射文件', 'warn');
+                }
+            }
+            else if (data.type === 'yaml_content') {
+                if (data.success) {
+                    document.getElementById('yaml-content').value = data.content;
+                    document.getElementById('yaml-content').dataset.currentPath = data.path;
+                    addLog(`已读取文件: ${data.path}`, 'info');
+                } else {
+                    addLog(`读取文件失败: ${data.error}`, 'error');
+                }
+            }
+            else if (data.type === 'yaml_save_result') {
+                if (data.success) {
+                    addLog('文件保存成功', 'info');
+                    requestYamlFileList();
+                } else {
+                    addLog(`保存失败: ${data.error}`, 'error');
+                }
+            }
+        }
+
+        function updateConnectionUI(connected) {
+            btnConnect.disabled = connected;
+            btnDisconnect.disabled = !connected;
+
+            if (connected) {
+                connectionStatus.textContent = '已连接';
+                connectionStatus.className = 'status-badge status-connected';
+            } else {
+                connectionStatus.textContent = '未连接';
+                connectionStatus.className = 'status-badge status-disconnected';
+            }
+        }
+
+        function updateServoState(data) {
+            if (!data.connected || !data.servos) {
+                servoCount.textContent = '--';
+                servoContainer.innerHTML = '<div class="empty-state"><p>未连接或无舵机数据</p></div>';
+                // 如果正在等待首次有效数据，0.5秒后重试（最多4次）
+                if (ws && ws._waitingForServoState) {
+                    ws._servoRetryCount = (ws._servoRetryCount || 0) + 1;
+                    if (ws._servoRetryCount < 4) {
+                        setTimeout(() => {
+                            if (ws && ws._waitingForServoState) {
+                                requestServoState();
+                            }
+                        }, 500);
+                    } else {
+                        ws._waitingForServoState = false;
+                        addConnectionLog('获取舵机数据失败，请点击"刷新"按钮重试', 'error');
+                        addLog('获取舵机数据失败，请点击"刷新"按钮重试', 'error');
+                    }
+                }
+                return;
+            }
+
+            // 成功收到有效数据，清除等待状态
+            if (ws && ws._waitingForServoState) {
+                ws._waitingForServoState = false;
+                ws._servoRetryCount = 0;
+                addConnectionLog('已成功获取舵机数据', 'info');
+            }
+
+            const servos = data.servos;
+            const names = Object.keys(servos);
+
+            // 如果舵机列表变了，重新生成滑块
+            if (JSON.stringify(names) !== JSON.stringify(servoNames)) {
+                servoNames = names;
+                currentServoValues = {};
+                generateSliders(servos);
+            }
+
+            // 首次收到舵机状态时，保存为初始位置
+            if (Object.keys(initialServoValues).length === 0) {
+                initialServoValues = {...servos};
+            }
+
+            // 更新值（不重新生成滑块）
+            for (const [name, value] of Object.entries(servos)) {
+                currentServoValues[name] = value;
+                const valueLabel = document.getElementById(`value-${name}`);
+                const slider = document.getElementById(`slider-${name}`);
+                if (valueLabel) {
+                    valueLabel.textContent = parseFloat(value).toFixed(2);
+                }
+                if (slider && !slider.dataset.userChanged) {
+                    slider.value = value;
+                }
+            }
+
+            servoCount.textContent = names.length;
+            lastUpdate.textContent = new Date().toLocaleTimeString();
+        }
+
+        function loadMappingFile() {
+            const path = document.getElementById('yaml-file-path').value.trim();
+            if (!path) {
+                addLog('请选择映射文件', 'warn');
+                return;
+            }
+            if (!ws || !isConnected) {
+                addLog('请先连接机器人', 'warn');
+                return;
+            }
+            ws.send(JSON.stringify({ type: 'load_mapping', yaml_file: path }));
+        }
+
+        function requestYamlFileList() {
+            if (!ws || !isConnected) return;
+            ws.send(JSON.stringify({ type: 'list_yaml_files', directory: '/home/droid/桌面/head-sdk/head-sdk' }));
+        }
+
+        function readYamlContent() {
+            const path = document.getElementById('yaml-file-path').value.trim();
+            if (!path) {
+                addLog('请先选择映射文件', 'warn');
+                return;
+            }
+            if (!ws || !isConnected) {
+                addLog('请先连接机器人', 'warn');
+                return;
+            }
+            ws.send(JSON.stringify({ type: 'read_yaml_file', yaml_path: path }));
+        }
+
+        function saveYamlContent() {
+            const path = document.getElementById('yaml-file-path').value.trim();
+            if (!path) {
+                addLog('请先选择映射文件', 'warn');
+                return;
+            }
+            if (!ws || !isConnected) {
+                addLog('请先连接机器人', 'warn');
+                return;
+            }
+            const content = document.getElementById('yaml-content').value;
+            ws.send(JSON.stringify({ type: 'save_yaml_file', yaml_path: path, content: content }));
+        }
+
+        function saveYamlContentAs() {
+            const originalPath = document.getElementById('yaml-file-path').value.trim();
+            if (!originalPath) {
+                addLog('请先选择映射文件', 'warn');
+                return;
+            }
+            const filename = prompt('请输入文件名:', originalPath.split('/').pop().replace('.yaml', '') + '_copy');
+            if (!filename) return;
+            const dir = originalPath.substring(0, originalPath.lastIndexOf('/') + 1);
+            const newPath = dir + filename + '.yaml';
+            if (!ws || !isConnected) {
+                addLog('请先连接机器人', 'warn');
+                return;
+            }
+            const content = document.getElementById('yaml-content').value;
+            ws.send(JSON.stringify({ type: 'save_yaml_file', yaml_path: newPath, content: content }));
+        }
+
+        function generateBSsliders(names) {
+            const container = document.getElementById('bs-container');
+            container.innerHTML = '';
+            const grid = document.createElement('div');
+            grid.className = 'servo-grid';
+
+            for (const name of names) {
+                currentBSValues[name] = 0.0;
+                bsControlEnabled[name] = true;  // 默认启用
+                const item = document.createElement('div');
+                item.className = 'servo-item';
+
+                // HeadYaw、HeadPitch、HeadRoll 范围是 -1 到 1，其他是 0 到 1
+                const isHeadRot = name === 'HeadYaw' || name === 'HeadPitch' || name === 'HeadRoll';
+                const min = isHeadRot ? '-1' : '0';
+                const max = '1';
+
+                item.innerHTML = `
+                    <div class="servo-header">
+                        <span class="servo-name">${name}</span>
+                        <span class="servo-value" id="bs-value-${name}">0.00</span>
+                        <label class="toggle-switch item-toggle">
+                            <input type="checkbox" id="bs-toggle-${name}" checked onchange="toggleBsControl('${name}', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <input type="range" class="servo-range"
+                        id="bs-slider-${name}"
+                        min="${min}" max="${max}" step="0.01" value="0"
+                        data-name="${name}">
+                `;
+                grid.appendChild(item);
+
+                const slider = item.querySelector(`#bs-slider-${name}`);
+                slider.addEventListener('input', debounce((e) => {
+                    if (!bsControlEnabled[name]) return;
+                    const value = parseFloat(e.target.value);
+                    document.getElementById(`bs-value-${name}`).textContent = value.toFixed(2);
+                    currentBSValues[name] = value;
+                    sendBlendshapeUpdate();
+                }, 50));
+            }
+
+            container.appendChild(grid);
+        }
+
+        function sendBlendshapeUpdate() {
+            if (!ws || !isConnected) return;
+            if (!controlEnabled) return;
+
+            // 同时发送给网页仿生人（不受机器人控制开关影响）
+            if (digitalConnected && wsDigital && wsDigital.readyState === WebSocket.OPEN) {
+                wsDigital.send(JSON.stringify(toLowercaseFirstKey(currentBSValues)));
+            }
+
+            if (!blToRobotControlEnabled) return;  // blendshapes 控制舵机开关
+
+            // 构建禁用的舵机列表
+            const disabledServos = Object.entries(servoControlEnabled)
+                .filter(([name, enabled]) => enabled === false)
+                .map(([name]) => name);
+
+            ws.send(JSON.stringify({
+                type: 'set_blendshape',
+                blendshapes: {...currentBSValues},
+                disabled_servos: disabledServos
+            }));
+        }
+
+        function generateSliders(servos) {
+            servoContainer.innerHTML = '<div class="loading">正在加载舵机...</div>';
+
+            setTimeout(() => {
+                servoContainer.innerHTML = '';
+                const grid = document.createElement('div');
+                grid.className = 'servo-grid';
+
+                const names = Object.keys(servos).sort();
+
+                for (const name of names) {
+                    const value = servos[name];
+                    const item = createServoItem(name, value);
+                    grid.appendChild(item);
+                }
+
+                servoContainer.appendChild(grid);
+                addLog(`已加载 ${names.length} 个舵机`, 'info');
+            }, 50);
+        }
+
+        function createServoItem(name, defaultValue) {
+            servoControlEnabled[name] = true;  // 默认启用
+            const item = document.createElement('div');
+            item.className = 'servo-item';
+
+            // 判断是否是头部关节（范围可能是 -1 到 1）
+            const min = '0';
+            const max = '1';
+
+            item.innerHTML = `
+                <div class="servo-header">
+                    <span class="servo-name">${name}</span>
+                    <span class="servo-value" id="value-${name}">${parseFloat(defaultValue).toFixed(2)}</span>
+                    <label class="toggle-switch item-toggle">
+                        <input type="checkbox" id="servo-toggle-${name}" checked onchange="toggleServoControl('${name}', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <input type="range" class="servo-range"
+                    id="slider-${name}"
+                    min="${min}"
+                    max="${max}"
+                    step="0.01"
+                    value="${defaultValue}"
+                    data-name="${name}">
+            `;
+
+            const slider = item.querySelector(`#slider-${name}`);
+            slider.addEventListener('input', debounce((e) => {
+                if (!controlEnabled || !servoControlEnabled[name]) return;
+                e.target.dataset.userChanged = 'true';
+                const value = parseFloat(e.target.value);
+                document.getElementById(`value-${name}`).textContent = value.toFixed(2);
+                currentServoValues[name] = value;
+                sendServoUpdate(name, value);
+            }, 50));
+
+            slider.addEventListener('change', (e) => {
+                e.target.dataset.userChanged = '';
+            });
+
+            return item;
+        }
+
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        // 切换单个 blendshape 的控制状态
+        function toggleBsControl(name, enabled) {
+            bsControlEnabled[name] = enabled;
+            const slider = document.getElementById(`bs-slider-${name}`);
+            if (slider) {
+                slider.disabled = !enabled;
+                if (!enabled) {
+                    slider.classList.add('disabled');
+                } else {
+                    slider.classList.remove('disabled');
+                }
+            }
+            addLog(`Blendshape ${name} 控制已${enabled ? '启用' : '禁用'}`, 'info');
+        }
+
+        // 切换单个舵机的控制状态
+        function toggleServoControl(name, enabled) {
+            servoControlEnabled[name] = enabled;
+            const slider = document.getElementById(`slider-${name}`);
+            if (slider) {
+                slider.disabled = !enabled;
+                if (!enabled) {
+                    slider.classList.add('disabled');
+                } else {
+                    slider.classList.remove('disabled');
+                }
+            }
+            addLog(`舵机 ${name} 控制已${enabled ? '启用' : '禁用'}`, 'info');
+        }
+
+        // blendshapes 控制舵机开关
+        function toggleBltorobotControl(enabled) {
+            blToRobotControlEnabled = enabled;
+            const status = document.getElementById('robot-control-status');
+            if (status) {
+                status.textContent = enabled ? '已启用' : '已禁用';
+                status.style.color = enabled ? '#64ff64' : '#ff6464';
+            }
+            addLog(`Blendshapes 控制舵机已${enabled ? '启用' : '禁用'}`, 'info');
+        }
+
+        function sendServoUpdate(name, value) {
+            if (!ws || !isConnected) return;
+
+            ws.send(JSON.stringify({
+                type: 'set_servo',
+                name: name,
+                value: value
+            }));
+        }
+
+        function sendBatchUpdate() {
+            if (!ws || !isConnected || Object.keys(pendingUpdates).length === 0) return;
+
+            ws.send(JSON.stringify({
+                type: 'set_servo_batch',
+                servos: pendingUpdates
+            }));
+
+            pendingUpdates = {};
+        }
+
+        function toggleControl(enabled) {
+            controlEnabled = enabled;
+
+            // 同时开关所有 blendshape 和舵机的单独控制
+            for (const name in bsControlEnabled) {
+                bsControlEnabled[name] = enabled;
+                const toggle = document.getElementById(`bs-toggle-${name}`);
+                if (toggle) toggle.checked = enabled;
+            }
+            for (const name in servoControlEnabled) {
+                servoControlEnabled[name] = enabled;
+                const toggle = document.getElementById(`servo-toggle-${name}`);
+                if (toggle) toggle.checked = enabled;
+            }
+
+            // 开关所有滑块
+            const sliders = document.querySelectorAll('.servo-range');
+            sliders.forEach(slider => {
+                if (enabled) {
+                    slider.removeAttribute('disabled');
+                    slider.classList.remove('disabled');
+                } else {
+                    slider.setAttribute('disabled', 'disabled');
+                    slider.classList.add('disabled');
+                }
+            });
+            addLog(enabled ? '控制已启用' : '控制已禁用', 'info');
+        }
+
+        function requestServoState() {
+            if (!ws || !isConnected) {
+                addLog('请先连接', 'warn');
+                return;
+            }
+
+            // 如果之前等待失败，重新开始计数
+            if (!ws._waitingForServoState) {
+                ws._servoRetryCount = 0;
+                ws._waitingForServoState = true;
+            }
+            ws.send(JSON.stringify({ type: 'get_servo_state' }));
+        }
+
+        function resetAllSliders() {
+            if (!isConnected) {
+                addLog('请先连接', 'error');
+                return;
+            }
+
+            // 重置为连接时的初始位置
+            const resetValues = {};
+            for (const name of servoNames) {
+                const initVal = initialServoValues[name] ?? 0.0;
+                resetValues[name] = initVal;
+                const slider = document.getElementById(`slider-${name}`);
+                const valueLabel = document.getElementById(`value-${name}`);
+                if (slider) slider.value = initVal;
+                if (valueLabel) valueLabel.textContent = parseFloat(initVal).toFixed(2);
+            }
+
+            ws.send(JSON.stringify({
+                type: 'set_servo_batch',
+                servos: resetValues
+            }));
+
+            addLog('已重置所有舵机', 'info');
+        }
+
+        function saveAsJson() {
+            if (Object.keys(currentServoValues).length === 0) {
+                addLog('没有可保存的数据', 'warn');
+                return;
+            }
+
+            const filename = prompt('请输入文件名:', 'servo_config');
+            if (!filename) return;
+
+            const json = JSON.stringify(currentServoValues, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.json`;
+            a.click();
+
+            URL.revokeObjectURL(url);
+            addLog(`配置已保存为 ${filename}.json`, 'info');
+        }
+
+        function loadFromJson() {
+            if (!isConnected) {
+                addLog('请先连接', 'error');
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        const loaded = {};
+
+                        for (const [name, value] of Object.entries(data)) {
+                            if (servoNames.includes(name)) {
+                                const slider = document.getElementById(`slider-${name}`);
+                                const valueLabel = document.getElementById(`value-${name}`);
+
+                                if (slider) {
+                                    slider.value = value;
+                                    valueLabel.textContent = parseFloat(value).toFixed(2);
+                                    loaded[name] = parseFloat(value);
+                                    currentServoValues[name] = parseFloat(value);
+                                }
+                            }
+                        }
+
+                        if (Object.keys(loaded).length > 0) {
+                            ws.send(JSON.stringify({
+                                type: 'set_servo_batch',
+                                servos: loaded
+                            }));
+                            addLog(`已加载配置: ${file.name} (${Object.keys(loaded).length} 个舵机)`, 'info');
+                        } else {
+                            addLog('配置中未找到匹配的舵机', 'warn');
+                        }
+                    } catch (error) {
+                        addLog(`加载配置失败: ${error.message}`, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            input.click();
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('舵机拖调页面已就绪', 'info');
+        });
+    </script>
+    </div>
+</body>
+</html>

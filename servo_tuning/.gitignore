@@ -1,0 +1,7 @@
+venv_face_servo/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+node_modules/

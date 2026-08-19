@@ -1,0 +1,15 @@
+      
+# 公式：def map_range(x, from_min, from_max, to_min, to_max):
+    # '''
+    # 线性映射函数，将 x 从 from_min-from_max 线性映射到 to_min-to_max 区间
+    # '''
+    # x = max(min(x, from_max), from_min)
+    # from_range = from_max - from_min
+    # to_range = to_max - to_min
+    # mapped_value = (x - from_min) * (to_range / from_range) + to_min
+
+# 格式：舵机名字 → {blendshape系数：[blendshape系数, [blendshape范围], [舵机范围]]}
+# 实现：舵机名字 = blendshape系数*map_range(当前blendshape系数, blendshape范围, 舵机范围)
+# 测试文件
+left_blink: # 0.44 0到1逐渐闭眼
+  eyeBlinkLeft: [1, [0, 1], [0, 1]] # 实际值范围 [0.44-1]

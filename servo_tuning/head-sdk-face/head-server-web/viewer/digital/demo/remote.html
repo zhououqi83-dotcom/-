@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MotionEngine — Remote Viewer</title>
+  <script type="importmap">
+  { "imports":
+    {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+      "talkinghead": "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/modules/talkinghead.mjs"
+    }
+  }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #10141f;
+      color: #eef2ff;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #avatar-container {
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at top, #1b2742, #0b1020 70%);
+      min-height: 100vh;
+    }
+    #avatar-container canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    #panel {
+      flex: 0 0 480px;
+      width: 480px;
+      height: 100vh;
+      border-left: 1px solid #26304f;
+      background: #0f172a;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    h1 { font-size: 18px; }
+    p, li, input, button, code { font-size: 13px; }
+    .muted { color: #94a3b8; }
+    .card {
+      border: 1px solid #26304f;
+      border-radius: 10px;
+      background: #111b33;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row.wrap { flex-wrap: wrap; }
+    input {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0b1223;
+      color: #eef2ff;
+      padding: 10px 12px;
+    }
+    button {
+      border: 1px solid #3b82f6;
+      background: #1d4ed8;
+      color: white;
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: transparent;
+      border-color: #475569;
+    }
+    button.active {
+      background: #0f766e;
+      border-color: #14b8a6;
+    }
+    #status, #catalog-summary, #last-command {
+      line-height: 1.5;
+    }
+    #log {
+      white-space: pre-wrap;
+      overflow-y: auto;
+      max-height: 260px;
+      font-family: ui-monospace, monospace;
+      background: #09101f;
+      border-radius: 8px;
+      padding: 12px;
+      border: 1px solid #24304d;
+    }
+    .slider-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .slider-row {
+      display: grid;
+      grid-template-columns: 132px 1fr 54px;
+      gap: 8px;
+      align-items: center;
+    }
+    .slider-row input[type="range"] {
+      padding: 0;
+    }
+    .slider-name {
+      color: #cbd5e1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .slider-value {
+      text-align: right;
+      color: #93c5fd;
+    }
+    ul { padding-left: 18px; }
+  </style>
+</head>
+
+<body>
+  <div id="avatar-container"></div>
+  <aside id="panel">
+    <div>
+      <h1>Remote Viewer</h1>
+      <p class="muted">只负责显示数字人，通过控制中枢接收流式开发指令。</p>
+    </div>
+
+    <div class="card">
+      <label class="muted" for="hub-url">Hub URL</label>
+      <div class="row">
+        <input id="hub-url" value="http://127.0.0.1:8765" />
+        <button id="btn-connect">Connect</button>
+      </div>
+      <div class="row">
+        <button class="secondary" id="btn-disconnect">Disconnect</button>
+        <span id="status">Loading avatar...</span>
+      </div>
+      <div class="row wrap">
+        <button id="btn-external-robot">流式接口控制机器人：关</button>
+        <span id="external-status" class="muted">等待 Hub...</span>
+      </div>
+      <div id="external-route" class="muted"></div>
+    </div>
+
+    <div class="card">
+      <strong>机器人连接</strong>
+      <div class="row">
+        <input id="robot-host" value="127.0.0.1" placeholder="Robot host" />
+        <input id="robot-port" value="2543" placeholder="Port" />
+      </div>
+      <div class="row wrap">
+        <button id="btn-robot-connect">连接 HeadSDK</button>
+        <button class="secondary" id="btn-robot-disconnect">断开</button>
+        <span id="robot-status" class="muted">检测中...</span>
+      </div>
+      <div class="row wrap">
+        <button id="btn-avatar-robot">数字人控制机器人：关</button>
+      </div>
+      <div class="row">
+        <input id="mapping-path" placeholder="motion-mapping.yaml 路径" />
+        <button class="secondary" id="btn-reload-mapping">更新映射</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>当前状态</strong>
+      <div id="last-command" class="muted">还未收到流式帧。</div>
+    </div>
+
+    <div class="card">
+      <strong>平台说明</strong>
+      <div class="muted">当前页面只接收流式表情系数和关节数据，不依赖动作库、命令信封和 ACK。</div>
+      <ul>
+        <li>支持表情系数直推</li>
+        <li>支持关节 bones 直推</li>
+        <li>支持 WebSocket 与 HTTP 两种流式输入</li>
+        <li>支持机器人转发控制</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="row wrap" style="justify-content:space-between">
+        <strong>表情控制</strong>
+        <div class="row wrap">
+          <button class="secondary" id="btn-force-drag">强制拖动：关</button>
+          <button class="secondary" id="btn-reset-controls">重置数字人</button>
+        </div>
+      </div>
+      <div id="blendshape-controls" class="slider-grid"></div>
+    </div>
+
+    <div class="card">
+      <strong>关节控制</strong>
+      <div id="joint-controls" class="slider-grid"></div>
+    </div>
+
+    <div class="card">
+      <strong>手臂关节控制</strong>
+      <div class="muted">仅作用于数字人显示，不做机器人映射与发送。</div>
+      <div id="arm-controls" class="slider-grid"></div>
+    </div>
+
+    <div class="card">
+      <strong>日志</strong>
+      <div id="log"></div>
+    </div>
+  </aside>
+
+  <script type="module" src="./remote.js"></script>
+</body>
+
+</html>

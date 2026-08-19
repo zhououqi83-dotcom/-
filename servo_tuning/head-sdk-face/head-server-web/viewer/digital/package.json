@@ -1,0 +1,36 @@
+{
+  "name": "motion-engine",
+  "version": "0.3.0",
+  "description": "Multi-track motion engine plugin for TalkingHead 3D avatars",
+  "type": "module",
+  "main": "src/MotionEngine.js",
+  "exports": {
+    ".": "./src/MotionEngine.js",
+    "./studio": "./src/MotionStudio.js",
+    "./control": "./src/controlProtocol.js",
+    "./overlay": "./src/OverlayManager.js",
+    "./motions": "./src/motions.json",
+    "./motions-th": "./src/motions_th.json",
+    "./mirror": "./src/FaceMirror.js"
+  },
+  "scripts": {
+    "remote:view": "vite --force --open remote.html",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "talkinghead",
+    "avatar",
+    "3d",
+    "motion",
+    "animation",
+    "gesture"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "talkinghead": "github:met4citizen/TalkingHead",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  }
+}
