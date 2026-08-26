@@ -46,7 +46,7 @@
 **三个子系统的边界很刻意**：
 - `gaze_arbiter/` 是"独立算法原型"——核心的 `signals/weights/scheduler` 三层完全不依赖摄像头/麦克风/舵机，用假数据（`examples/simulate.py`）就能单独验证决策逻辑对不对。
 - `servo_tuning/` 是硬件驱动层，`gaze_arbiter` 通过 gRPC 连接它，不直接碰串口。这一层也是舵机映射标定工具（`servo_tuning.html` 等）所在的地方，跟注视决策是两套用途共享同一个硬件驱动。
-- `light_asd_test/` 提供人脸检测+说话人判别的模型能力（MediaPipe + Light-ASD），`gaze_arbiter` 直接 `import` 它的检测函数复用，但要求跑在 `light_asd_test/venv`（装了 opencv/torch/mediapipe 这些重依赖）里。
+- `light_asd_test/` 提供人脸检测+说话人判别的模型能力（MediaPipe + Light-ASD），`gaze_arbiter` 直接 `import` 它的检测函数复用，依赖（opencv/torch/mediapipe）已经合并进 `servo_face` 这一个 conda 环境（见"三、新机器上手清单"），不需要再单独维护一份 `light_asd_test/venv`。
 
 ---
 
@@ -90,9 +90,21 @@
 
 ---
 
-## 三、启动方法
+## 三、新机器 / 新同事首次上手清单
 
-### 3.1 一键启动（推荐，日常用这个）
+拿到这份代码后跑不起来，大概率是漏了下面几样——都是"不算源码、`git clone` 不会自动带过来"或者"跟这台机器强绑定"的东西：
+
+1. **装 Python 环境**：跑 `bash install_conda_env.sh`，会建一个叫 `servo_face` 的 conda 环境，把 opencv/torch/mediapipe/grpcio 这些依赖装好（版本锁死成实测能跑通的组合，不要自己升级）。主流程（`start.sh`/`web_dashboard.py`）**不需要**再单独装 `light_asd_test/venv`——那是这个项目更早期的环境隔离方式，`install_conda_env.sh` 已经把它要的东西合并进 `servo_face` 里了。**例外**：`light_asd_test/live_demo.sh`/`live_test.sh` 这两个独立跑检测的脚本（4.4节）里硬编码了 `venv/bin/python`，如果要用这两个脚本，要么另外建一份 `light_asd_test/venv`，要么跳过脚本直接用 `servo_face` 的 python 跑 `light_asd_test/Light-ASD/live_demo.py`（见 4.4 节）。
+2. **装 ffmpeg**：`light_asd_test/bin/`（ffmpeg 可执行文件）体积太大没有跟着仓库走，需要自己装：`sudo apt install ffmpeg`，或者找原来给你这份代码的人要那个 `bin/` 目录。装完确认 `ffmpeg`/`ffprobe` 在 `PATH` 里能直接调用，或者把它们放进 `light_asd_test/bin/` 目录（`live_demo.py` 里两条路径都会尝试）。
+3. **确认摄像头/舵机设备路径**：`VIDEO_DEV`、`ROBOT_VIDEO_DEV`、舵机串口这些配置里写的默认值是**原来那台机器的 USB by-id 路径**，换一台电脑几乎肯定对不上。开机后先用 `ls /dev/v4l/by-id/` 和 `ls /dev/serial/by-id/` 查一下这台机器实际的设备名，通过环境变量覆盖（见下面"环境变量参考"），不要直接用默认值硬跑。
+4. **确认舵机标定配置对应你手上的机型**：仓库里带的是 Ula/G01/G02/L01 几个机型的 `servoConfig_*.yaml`，`start.sh` 默认用的是 Ula 那份——如果你手上是别的机型，得改 `--config` 参数指到对应文件，标定数据（舵机ID/行程/方向）不对会导致表情做反或者撞到机械限位。
+5. **Light-ASD 模型权重**：`finetuning_TalkSet.model`/`pretrain_AVA_CVPR.model` 现在跟着仓库一起走了（`git clone` 会带上），不用额外下载。
+
+---
+
+## 四、启动方法
+
+### 4.1 一键启动（推荐，日常用这个）
 
 ```bash
 cd attention
@@ -105,7 +117,7 @@ bash start.sh
 
 首次跑需要先装环境：`bash install_conda_env.sh`（装进 conda 环境 `servo_face`，含 opencv/torch/mediapipe/grpcio 等重依赖）。
 
-### 3.2 单独重启某一部分
+### 4.2 单独重启某一部分
 
 两个服务是独立进程，改了哪部分代码只需要重启对应的进程（Python 改动只在进程重新 import 那一刻生效，改磁盘文件对已运行的进程无效）：
 
@@ -121,24 +133,30 @@ python servo_tuning/head-sdk-face/head-server/src/head_grpc_server.py \
   --config servo_tuning/head-sdk-face/head-server/src/servoConfig_25DV3_Ula.yaml
 ```
 
-### 3.3 不接硬件，纯算法验证
+### 4.3 不接硬件，纯算法验证
 
 ```bash
 cd gaze_arbiter
 python examples/simulate.py       # 假数据跑通整条决策链路, 肉眼看输出符不符合直觉
 ```
 
-### 3.4 light_asd_test 独立跑（不接注视决策，仅验证检测/说话人判别本身）
+### 4.4 light_asd_test 独立跑（不接注视决策，仅验证检测/说话人判别本身）
 
 ```bash
 cd light_asd_test
 VIDEO_DEV=/dev/video0 AUDIO_DEV=hw:0,0 bash live_demo.sh
 ```
-需要 `light_asd_test/venv` 装好依赖（README.md 里写了应该已装好，实测这台机器上目前**没有**这个 venv，需要的话要单独装）。
+`live_demo.sh` 硬编码用的是 `light_asd_test/venv/bin/python`，这份仓库**没有**带这个 venv（历史遗留路径，`servo_face` 已经覆盖了它要的依赖）。两个选择：① 另建一份 `light_asd_test/venv` 装同样依赖；② 跳过脚本，直接用 `servo_face` 环境的 python 跑（更省事，推荐）：
+
+```bash
+conda activate servo_face
+cd light_asd_test/Light-ASD
+python live_demo.py --videoIndex 0 --audioDevice hw:0,0 --pretrainModel weight/finetuning_TalkSet.model
+```
 
 ---
 
-## 四、使用方法（网页仪表盘）
+## 五、使用方法（网页仪表盘）
 
 打开网页后主要有这几个开关，每个都是独立的"期望状态 vs 实际状态"同步（点按钮只是记一下期望值，真正的连接/断开动作在主循环里做）：
 
@@ -153,7 +171,7 @@ VIDEO_DEV=/dev/video0 AUDIO_DEV=hw:0,0 bash live_demo.sh
 
 ---
 
-## 五、环境变量参考
+## 六、环境变量参考
 
 启动前用环境变量覆盖默认值，比如 `HEAD_INVERT=0 bash start.sh`（但 `start.sh` 目前没有转发所有变量，更精细的调参建议用 3.2 节手动启动网页那种方式）。
 
@@ -180,7 +198,7 @@ VIDEO_DEV=/dev/video0 AUDIO_DEV=hw:0,0 bash live_demo.sh
 
 ---
 
-## 六、已知限制 / 待办
+## 七、已知限制 / 待办
 
 - **`facing_score`（朝向机器人程度）尚未真正校准**：这个信号的写入依赖头部姿态估计模块，目前上游数据链路还没接真实校准好的模型，长期可能导致大部分人这一项分数长期偏低。
 - **`eye_fov_deg`（眼珠满行程对应视角，默认40°）是估计值**，眼珠实际能转多大角度需要上真机标定。
@@ -190,7 +208,7 @@ VIDEO_DEV=/dev/video0 AUDIO_DEV=hw:0,0 bash live_demo.sh
 
 ---
 
-## 七、相关文档
+## 八、相关文档
 
 - `gaze_arbiter/PLATFORM.md` —— 注视决策算法的详细公式推导、参数表
 - `servo_tuning/使用说明.md` / `声音追踪使用说明.md` —— 舵机映射标定工具、声源追踪脚本的具体用法
