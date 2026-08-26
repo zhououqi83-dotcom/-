@@ -2,7 +2,6 @@ from gaze_arbiter.person import Person
 from gaze_arbiter.signals import (
     SignalParams,
     SoundContext,
-    chat_target_score,
     face_size_score,
     facing_score,
     novelty_score,
@@ -83,14 +82,3 @@ def test_facing_score_clamped():
 def test_speaking_score():
     assert speaking_score(make_person(is_speaking=True)) == 1.0
     assert speaking_score(make_person(is_speaking=False)) == 0.0
-
-
-def test_chat_target_score_respects_expiry():
-    p = make_person(is_chat_target=True, chat_target_until=100.0)
-    assert chat_target_score(p, now=50.0) == 1.0
-    assert chat_target_score(p, now=150.0) == 0.0
-
-
-def test_chat_target_score_no_expiry_means_indefinite():
-    p = make_person(is_chat_target=True, chat_target_until=0.0)
-    assert chat_target_score(p, now=1_000_000.0) == 1.0

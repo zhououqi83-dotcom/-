@@ -1,5 +1,5 @@
 controllers:
-  - port: /dev/serial/by-id/usb-lingYun_cyberGenie_366735813034-if00  # Head Controller (ttyACM1)
+  - port: /dev/serial/by-id/usb-lingYun_cyberGenie_366735883034-if00  # Head Controller (当前这块板子的序列号; 用 by-id 而不是 /dev/ttyACMn, 因为打开串口会触发板子 DTR 复位重新枚举, 编号会变)
     servos:
       - { name: 'left_blink'           , id: 107, jdStart: 1500, jdMax: 2000, jdMin: 1100, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }
       - { name: 'left_eye_erect'       , id: 104, jdStart: 1500, jdMax: 1800, jdMin: 1200, fScale: 1, fOffSet: 0, pos: 0, dir: 0 }

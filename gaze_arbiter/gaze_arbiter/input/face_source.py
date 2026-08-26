@@ -102,6 +102,7 @@ def observe_face_track(
     frame_w: float,
     frame_h: float,
     cfg: FaceSourceConfig,
+    camera_yaw_deg: float = 0.0,
     now: Optional[float] = None,
 ):
     """把一个人脸跟踪对象的当前状态写进 PersonRegistry, 返回对应 Person.
@@ -109,8 +110,18 @@ def observe_face_track(
     `track` 只要求有 `.id` / `.bbox` / `.yaw` / `.pitch` / `.last_score` 这几个
     属性, 天然兼容 light_asd_test/Light-ASD/live_demo.py::FaceTrack, 不需要
     真的 import 那个类——用假对象(比如 SimpleNamespace)一样能测。
+
+    `camera_yaw_deg`: 摄像头当前实际朝向的本体系角度(来自
+    `output/head_driver.py::HeadDriver.camera_yaw_deg` = 头角度+眼相对头的
+    角度——摄像头是装在眼球机构里的, 眼球转动会带着摄像头一起转, 不是单纯
+    装饰性的假眼珠, 所以不能只用头的角度)。`bbox_center_yaw_deg` 算出来的
+    角度是"相对当前摄像头光轴"的——摄像头指向正前方(头正、眼也正)时不用管,
+    但头转开或者眼动优先接管让眼珠转开之后, 光轴跟着偏了, 画面里其他人的
+    方位角不加上这个偏移量就会算错(比如头看着A、眼睛额外偏了10°时, 画面
+    正中间已经不是机器人的正前方了)。默认 0.0 是为了兼容没接头部舵机的
+    测试场景(那时候假设摄像头恒定朝正前方, 不需要修正)。
     """
-    yaw_deg = bbox_center_yaw_deg(track.bbox, frame_w, fov_deg=cfg.fov_deg, invert=cfg.invert)
+    yaw_deg = camera_yaw_deg + bbox_center_yaw_deg(track.bbox, frame_w, fov_deg=cfg.fov_deg, invert=cfg.invert)
     face_area = bbox_area_frac(track.bbox, frame_w, frame_h)
     facing = facing_score_from_pose(track.yaw, track.pitch, yaw_th=cfg.yaw_th, pitch_th=cfg.pitch_th)
     speaking = is_speaking_from_score(track.last_score, cfg.speaking_threshold)

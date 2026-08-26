@@ -102,10 +102,10 @@ from gaze_arbiter import (  # noqa: E402
     SoundOrientConfig,
     SoundOrientState,
     WeightConfig,
+    compute_interest,
 )
 from gaze_arbiter.input.face_source import FaceSourceConfig, observe_face_track  # noqa: E402
 from gaze_arbiter.input.sound_source import J7034DoaReader, SoundSourceConfig  # noqa: E402
-from gaze_arbiter.output.blink_driver import BlinkDriver, BlinkDriverConfig  # noqa: E402
 from gaze_arbiter.output.head_driver import HeadDriver, HeadDriverConfig  # noqa: E402
 
 # 覆盖 live_demo.py 里的默认值(0.1s)——profile 过 score_tracks() 单人一次
@@ -119,10 +119,13 @@ UPDATE_EVERY_SEC = float(os.environ.get("ASD_UPDATE_INTERVAL_S", "0.3"))
 PORT = int(os.environ.get("WEB_PORT", "8642"))
 # 断开连接/退出进程时慢速回中的最长阻塞秒数(回中本身约 1~1.5s, 留余量; 设 0 立即断开)
 RECENTER_EXIT_MAX_S = float(os.environ.get("RECENTER_EXIT_MAX_S", "3.0"))
-# 头部舵机 sent_frac 每帧变化超过这个值才算"在摇头", 用来给眨眼让路——
-# 小于这个的抖动大概率是人脸检测噪声, 不是真的在转头(阈值参考: max_speed
-# 默认 0.4/s, 网页demo典型帧率 10~30fps, 真正在跟踪目标时每帧变化远大于此)。
-HEAD_MOVING_FRAC_THRESHOLD = 0.004
+
+# 一帧误检(阴影/反光/纹理)跟真脸走的是完全一样的检测路径, 刚出现就立刻注册进
+# PersonRegistry 的话会自带满分新鲜度权重(novelty_score, 见 weights.py), 有可能
+# 被 GazeScheduler 选中并锁定注视方向好几秒——表现成"头突然转到没人的地方"。
+# 要求 FaceTrack 连续命中够这么多帧(见 live_demo.py::FaceTrack.hits/mark_missed)
+# 才注册, 从源头过滤掉这类一闪而过的误检(同一个门槛也用在 run_with_face.py 里)。
+MIN_CONFIRM_HITS = 3
 
 
 def score_tracks(tracks, audio: AudioStreamer, asd: ASD) -> None:
@@ -200,7 +203,9 @@ class SharedState:
         self._camera_desired = False
         self._head_desired = False
         self._sound_desired = False
-        self._blink_desired = False
+        # 眼动优先默认开着(跟 head_driver.HeadDriverConfig 的默认值一致),
+        # EYE_FIRST=0 可以把这个默认值改成关——按钮点了之后就以按钮为准。
+        self._eye_first_desired = os.environ.get("EYE_FIRST", "1") not in ("0", "false", "False")
         self._camera_source = "local"  # "local" | "robot"
 
     def update(self, jpeg: bytes, state: dict) -> None:
@@ -248,13 +253,13 @@ class SharedState:
         with self._lock:
             return self._sound_desired
 
-    def set_blink_desired(self, v: bool) -> None:
+    def set_eye_first_desired(self, v: bool) -> None:
         with self._lock:
-            self._blink_desired = v
+            self._eye_first_desired = v
 
-    def blink_desired(self) -> bool:
+    def eye_first_desired(self) -> bool:
         with self._lock:
-            return self._blink_desired
+            return self._eye_first_desired
 
 
 SHARED = SharedState()
@@ -356,7 +361,7 @@ INDEX_HTML = """<!doctype html>
         <button class="toggle-btn" id="headBtn" onclick="toggleHead()">连接机器人</button>
       </div>
       <button class="toggle-btn" id="soundBtn" onclick="toggleSound()" style="width:100%;margin-bottom:10px;">开启声源定位</button>
-      <button class="toggle-btn" id="blinkBtn" onclick="toggleBlink()" style="width:100%;margin-bottom:10px;">开启自然眨眼</button>
+      <button class="toggle-btn" id="eyeFirstBtn" onclick="toggleEyeFirst()" style="width:100%;margin-bottom:10px;">开启眼动优先</button>
       <canvas id="gauge" width="320" height="200"></canvas>
       <div class="status-line" id="soundStatus">等待数据...</div>
       <div class="legend">
@@ -367,7 +372,7 @@ INDEX_HTML = """<!doctype html>
       </div>
       <div class="status-line">刻度 -90°~90° = 相对机器人正前方(0°)的左右方位角, 半圆顶部朝前</div>
       <div class="status-line" id="headStatus">头部舵机: 未连接</div>
-      <div class="status-line" id="blinkStatus">自然眨眼: 未开启</div>
+      <div class="status-line" id="gazeModeStatus">眼动优先: 需要先连接机器人</div>
     </div>
     <div class="card">
       <h2>当前选中目标 · 权重构成</h2>
@@ -384,7 +389,7 @@ INDEX_HTML = """<!doctype html>
 </div>
 <script>
 const SIGNAL_LABELS = {
-  size: "脸大小", novelty: "没看过", sound: "声源", facing: "朝向", speaking: "说话", chat_target: "聊天"
+  size: "脸大小", novelty: "没看过", sound: "声源", facing: "朝向", speaking: "说话"
 };
 
 function drawGauge(ctx, w, h, state) {
@@ -452,7 +457,7 @@ function renderBreakdown(container, people) {
   }
   const b = target.breakdown;
   let html = `<div class="status-line">当前选中: <b>${target.person_id}</b>(总分 ${b.total.toFixed(2)})</div>`;
-  for (const key of ["size", "novelty", "sound", "facing", "speaking", "chat_target"]) {
+  for (const key of ["size", "novelty", "sound", "facing", "speaking"]) {
     const v = b[key] || 0;
     html += `<div class="bar-row">
       <div class="bar-label">${SIGNAL_LABELS[key]}</div>
@@ -540,19 +545,19 @@ async function toggleSound() {
   }
 }
 
-let blinkPending = false;
+let eyeFirstPending = false;
 
-async function toggleBlink() {
-  if (blinkPending || !lastState.head_connected) return;  // 头没连着点了也没用
-  blinkPending = true;
-  const btn = document.getElementById("blinkBtn");
+async function toggleEyeFirst() {
+  if (eyeFirstPending) return;
+  eyeFirstPending = true;
+  const btn = document.getElementById("eyeFirstBtn");
   btn.disabled = true;
   try {
-    const action = lastState.blink_active ? "stop" : "start";
-    await fetch(`/api/blink/${action}`, { method: "POST" });
+    const action = lastState.eye_first ? "stop" : "start";
+    await fetch(`/api/eye_first/${action}`, { method: "POST" });
   } finally {
-    blinkPending = false;
-    btn.disabled = false;
+    eyeFirstPending = false;
+    btn.disabled = !lastState.head_connected;
   }
 }
 
@@ -572,10 +577,9 @@ function updateButtons(state) {
   soundBtn.classList.toggle("on", !!state.mic_connected);
   soundBtn.classList.toggle("error", !state.mic_connected && !!state.mic_error);
 
-  const blinkBtn = document.getElementById("blinkBtn");
-  blinkBtn.textContent = state.blink_active ? "关闭自然眨眼" : "开启自然眨眼";
-  blinkBtn.classList.toggle("on", !!state.blink_active);
-  blinkBtn.disabled = !state.head_connected;  // 没连机器人就先不让点
+  const eyeFirstBtn = document.getElementById("eyeFirstBtn");
+  eyeFirstBtn.textContent = state.eye_first ? "关闭眼动优先" : "开启眼动优先";
+  eyeFirstBtn.classList.toggle("on", !!state.eye_first);
 
   const cameraStatus = document.getElementById("cameraStatus");
   cameraStatus.textContent = state.camera_active
@@ -612,10 +616,24 @@ async function poll() {
       ? `头部舵机: 已连接, head_yao=${state.head_yao.toFixed(2)}`
       : (state.head_error ? ("头部舵机: 未连接(" + state.head_error + ")") : "头部舵机: 未连接");
 
-    const blinkStatus = document.getElementById("blinkStatus");
-    blinkStatus.textContent = state.blink_active
-      ? "自然眨眼: 运行中(头静止时随机眨眼)"
-      : (state.head_connected ? "自然眨眼: 未开启" : "自然眨眼: 需要先连接机器人");
+    // 眼动优先: 直观显示这一帧是"只瞟眼珠"还是"在转头", 以及眼珠偏向哪边.
+    // 调 EYE_ONLY_DEG / HEAD_ENGAGE_DEG 两个阈值时对着这行看最直接。
+    const gazeModeStatus = document.getElementById("gazeModeStatus");
+    if (!state.head_connected) {
+      gazeModeStatus.textContent = "眼动优先: 需要先连接机器人";
+      gazeModeStatus.classList.remove("on");
+    } else if (!state.eye_first) {
+      gazeModeStatus.textContent = "眼动优先: 已关闭(按钮开启, 只转头)";
+      gazeModeStatus.classList.remove("on");
+    } else {
+      const eye = state.eye_frac;
+      // eye_frac: 0=最右, 0.5=正中, 1=最左(约定见 servo_tuning/config/ULA_new.yaml)
+      const dir = Math.abs(eye - 0.5) < 0.02 ? "正中" : (eye < 0.5 ? "偏右" : "偏左");
+      gazeModeStatus.textContent = state.gaze_mode === "head"
+        ? `眼动优先: 转头中(眼珠回中) eye=${eye.toFixed(2)}`
+        : `眼动优先: 只动眼珠(头不动) eye=${eye.toFixed(2)} ${dir}`;
+      gazeModeStatus.classList.toggle("on", state.gaze_mode === "eye");
+    }
 
     updateButtons(state);
     renderBreakdown(document.getElementById("breakdown"), state.people || []);
@@ -659,8 +677,8 @@ class Handler(BaseHTTPRequestHandler):
             "/api/head/disconnect": lambda: SHARED.set_head_desired(False),
             "/api/sound/start": lambda: SHARED.set_sound_desired(True),
             "/api/sound/stop": lambda: SHARED.set_sound_desired(False),
-            "/api/blink/start": lambda: SHARED.set_blink_desired(True),
-            "/api/blink/stop": lambda: SHARED.set_blink_desired(False),
+            "/api/eye_first/start": lambda: SHARED.set_eye_first_desired(True),
+            "/api/eye_first/stop": lambda: SHARED.set_eye_first_desired(False),
         }
         action = actions.get(self.path)
         if action is None:
@@ -714,16 +732,27 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     allow_reuse_address = True
 
 
-def draw_overlay(frame, tracks, registry: PersonRegistry, decision) -> None:
-    """跟 run_with_face.py 里同一段画框逻辑(绿/红框 + 黄色 GAZE 高亮)."""
+def draw_overlay(frame, tracks, registry: PersonRegistry, decision, *,
+                 sound: SoundContext, sig_params: SignalParams, weights: WeightConfig,
+                 now: float) -> None:
+    """跟 run_with_face.py 里同一段画框逻辑(绿/红框 + 黄色 GAZE 高亮)。
+
+    人脸框正上方额外画一行"注意力总分"(compute_interest() 的 total, 就是
+    GazeScheduler 用来加权抽人的那个分数)——每个人都实时算一份、不只是当前
+    被看的那位, 方便直接在画面上对照 weights.py 的六项打分看权重是怎么起
+    作用的。"""
     for t in tracks:
         x1, y1, x2, y2 = [int(v) for v in t.bbox]
         speaking = t.last_score > 0
         color = (0, 255, 0) if speaking else (0, 0, 255)
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+        p = registry.find_by_track(t.id)
+        if p is not None:
+            interest = compute_interest(p, now=now, sound=sound, sig_params=sig_params, weights=weights)
+            cv2.putText(frame, f"attn={interest.total:.2f}", (x1, max(y1 - 36, 20)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
         cv2.putText(frame, f"#{t.id} {t.last_score:+.2f}", (x1, max(y1 - 12, 20)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
-        p = registry.find_by_track(t.id)
         if p is not None and decision.person_id is not None and p.person_id == decision.person_id:
             cv2.rectangle(frame, (x1 - 4, y1 - 4), (x2 + 4, y2 + 4), (0, 255, 255), 4)
             cv2.putText(frame, "GAZE", (x1, min(y2 + 30, frame.shape[0] - 4)),
@@ -738,7 +767,7 @@ def build_state(registry: PersonRegistry, decision, sound: SoundContext,
                 camera_active: bool = False, camera_error: str | None = None,
                 camera_source: str = "local", head_error: str | None = None,
                 mic_connected: bool = False, mic_error: str | None = None,
-                blink_desired: bool = False,
+                eye_first_desired: bool = True,
                 sound_orient_bearing: float | None = None) -> dict:
     people = []
     for p in registry.people:
@@ -747,8 +776,7 @@ def build_state(registry: PersonRegistry, decision, sound: SoundContext,
         if is_target and decision.breakdown is not None:
             b = decision.breakdown
             breakdown = {"size": b.size, "novelty": b.novelty, "sound": b.sound,
-                        "facing": b.facing, "speaking": b.speaking,
-                        "chat_target": b.chat_target, "total": b.total}
+                        "facing": b.facing, "speaking": b.speaking, "total": b.total}
         people.append({
             "person_id": p.person_id, "track_id": p.track_id, "yaw_deg": p.yaw_deg,
             "face_area_frac": p.face_area_frac, "facing_score": p.facing_score,
@@ -767,9 +795,15 @@ def build_state(registry: PersonRegistry, decision, sound: SoundContext,
         "head_connected": head_driver is not None,
         "head_error": head_error,
         "head_yao": head_driver.sent_frac if head_driver is not None else None,
-        # 眨眼是按钮点了才跑, 不是头一连上就常驻——没连头部舵机时这里恒为
-        # False(哪怕按钮之前点过), 因为没有 blink_driver 可以驱动。
-        "blink_active": head_driver is not None and blink_desired,
+        # 眼动优先: 当前是"只动眼珠"(eye)还是"眼珠回中+转头"(head), 以及眼珠
+        # 位置(0=最右, 0.5=正中, 1=最左)。eye_first 关掉时 mode 恒为 "eye"、
+        # eye_frac 恒为 0.5, 页面上会显示成"已关闭"。
+        "gaze_mode": head_driver.mode if head_driver is not None else None,
+        "eye_frac": head_driver.eye_frac if head_driver is not None else None,
+        # 按钮"开启眼动优先"点了就是期望值, 不需要连着头才有意义——没连接时
+        # 这里反映的就是下次连接会用哪个初始值, 连接后主循环会持续把这个值
+        # 同步进 head_driver.cfg.eye_first, 点按钮随时切换不用重新连接。
+        "eye_first": eye_first_desired,
         # 声源定向(见 gaze_arbiter/sound_orient.py)当前是否接管了头部朝向,
         # 非 None = 正在转向/停留在这个声源方位角, 不受 GazeScheduler 控制
         "sound_orient_bearing": sound_orient_bearing,
@@ -805,6 +839,13 @@ def _connect_head(head_host: str, sdk_port: int, face_cfg: FaceSourceConfig):
         invert=os.environ.get("HEAD_INVERT", "1") not in ("0", "false", "False"),
         smoothing=float(os.environ.get("HEAD_SMOOTHING", "0.25")),
         max_speed=float(os.environ.get("HEAD_MAX_SPEED", "0.4")),
+        # 眼动优先: 目标偏得少就只瞟眼珠、头不动; 偏得多才眼珠回中+转头。
+        # 初始值取页面"开启眼动优先"按钮当前的期望状态(默认由 EYE_FIRST 环境
+        # 变量播种, 见 SharedState.__init__); 连接后按钮随时切换不用重连, 见
+        # 主循环里那段 head_driver.cfg.eye_first = SHARED.eye_first_desired()。
+        eye_first=SHARED.eye_first_desired(),
+        eye_only_deg=float(os.environ.get("EYE_ONLY_DEG", "12.0")),
+        head_engage_deg=float(os.environ.get("HEAD_ENGAGE_DEG", "20.0")),
     ))
     head_driver.center()
     return head_client, head_driver, None
@@ -879,8 +920,6 @@ def main() -> int:
     current_source = "local"  # 当前 cap 实际用的是哪个源, cap 是 None 时这个值没意义
     head_client = None
     head_driver = None
-    blink_driver = None  # 跟 head_driver 同生命周期, 见下面连接/断开两处
-    blink_was_on = False  # 按钮"开启自然眨眼"上一帧是不是开着的, 检测关闭的那一下
     head_recentering = False  # 断开流程: 先慢速回中, 完成后才真正断开
     camera_error: str | None = None
     head_error: str | None = None
@@ -957,8 +996,6 @@ def main() -> int:
                     SHARED.set_head_desired(False)
                 else:
                     print("✓ 头部舵机已连接, 头回中")
-                    blink_driver = BlinkDriver(head_client)
-                    blink_driver.reset()  # 强制睁眼, 避免上次异常退出遗留半闭眼
             elif not want_head and head_driver is not None:
                 if head_recentering:
                     pass  # 已经在慢速回中, 下面的推进块会继续处理
@@ -970,16 +1007,19 @@ def main() -> int:
                     except Exception:  # noqa: BLE001 — 回中启动失败就直接断开, 不卡住
                         try:
                             head_driver.center()
-                            blink_driver.reset()  # 断开前确保眼睛停在睁眼状态
                         except Exception:
                             pass
                         head_client.disconnect()
                         head_client = None
                         head_driver = None
-                        blink_driver = None
-                        blink_was_on = False
-                        SHARED.set_blink_desired(False)  # 头断了, 眨眼按钮也一起弹回去
                         head_error = None
+
+            # ── 眼动优先: 按钮点了随时生效, 不用重新连接头部舵机 ─────────
+            if head_driver is not None and not head_recentering:
+                want_eye_first = SHARED.eye_first_desired()
+                if head_driver.cfg.eye_first and not want_eye_first:
+                    head_driver.recenter_eyes()  # 关闭前把眼珠收回正中, 不然会停在偏着的位置
+                head_driver.cfg.eye_first = want_eye_first
 
             # ── 头部慢速回中的推进(不管摄像头开没开都要跑, 否则摄像头关着
             # 时回中会卡住——用这里单独取的 loop_now, 不依赖下面摄像头帧
@@ -997,15 +1037,11 @@ def main() -> int:
                     print("✓ 慢速回中完成, 断开头部舵机")
                     try:
                         head_driver.center()  # 确保最后发一次精确回中
-                        blink_driver.reset()  # 确保眼睛停在睁眼状态, 不会断开时卡在半闭
                     except Exception:
                         pass
                     head_client.disconnect()
                     head_client = None
                     head_driver = None
-                    blink_driver = None
-                    blink_was_on = False
-                    SHARED.set_blink_desired(False)  # 头断了, 眨眼按钮也一起弹回去
                     head_error = None
                     head_recentering = False
 
@@ -1041,7 +1077,7 @@ def main() -> int:
                                     camera_source=want_source, head_error=head_error,
                                     mic_connected=doa_reader is not None and doa_reader.last_error() is None,
                                     mic_error=doa_reader.last_error() if doa_reader is not None else mic_error,
-                                    blink_desired=SHARED.blink_desired())
+                                    eye_first_desired=SHARED.eye_first_desired())
                 SHARED.update(CAMERA_OFF_JPEG, state)
                 time.sleep(0.1)
                 continue
@@ -1077,7 +1113,7 @@ def main() -> int:
                     tracks[ti].video_buf.append(gray)
             for ti, t in enumerate(tracks):
                 if ti not in used_t:
-                    t.missed += 1
+                    t.mark_missed()
             tracks = [t for t in tracks if t.missed <= MAX_MISSED]
             for di in unmatched_dets:
                 nt = FaceTrack(detections[di])
@@ -1089,8 +1125,16 @@ def main() -> int:
             score_tracks(tracks, audio, asd)
 
             now = time.monotonic()
+            # 摄像头装在眼球机构里, 眼动优先接管转开眼珠时摄像头也跟着转——
+            # 修正必须用头+眼的合成角度, 不能只用头的角度(见 camera_yaw_deg)。
+            camera_yaw_now = head_driver.camera_yaw_deg if head_driver is not None else 0.0
             for t in tracks:
-                observe_face_track(registry, t, frame_w=frame_w, frame_h=frame_h, cfg=face_cfg, now=now)
+                if t.hits < MIN_CONFIRM_HITS:
+                    # 刚出现、还没连续命中够帧数——先不注册进 PersonRegistry(见
+                    # MIN_CONFIRM_HITS 的注释)。
+                    continue
+                observe_face_track(registry, t, frame_w=frame_w, frame_h=frame_h, cfg=face_cfg,
+                                   camera_yaw_deg=camera_yaw_now, now=now)
             sound = doa_reader.latest_sound_context(sound_cfg) if doa_reader is not None else SoundContext()
             decision = scheduler.tick(registry, sound=sound, sig_params=sig_params, weights=weights, now=now)
 
@@ -1104,28 +1148,15 @@ def main() -> int:
             if head_driver is not None and not head_recentering:
                 dt = max(1e-3, now - last_head_t)  # 摄像头/模型速度不固定, 用实际经过的时间算限速, 不能假设固定帧率
                 last_head_t = now
-                frac_before = head_driver.sent_frac
                 if orient_bearing is not None:
                     # 声源定向接管: 场上没人, 头转去正对声源找人
                     head_driver.update(orient_bearing, dt)
                 else:
                     target = registry.find_by_id(decision.person_id) if decision.person_id else None
                     head_driver.update(target.yaw_deg if target is not None else None, dt)
-                # 眨眼不是头一连上就常驻跑, 要页面上点了"开启自然眨眼"才生效
-                # (SHARED.blink_desired()), 头这一帧实际动没动(不管是在追踪
-                # 目标还是声源定向)决定这一帧能不能开始/推进一次眨眼——只在
-                # 头没在转的时候触发, 见 gaze_arbiter/output/blink_driver.py
-                # 顶部说明。
-                want_blink = SHARED.blink_desired()
-                if want_blink:
-                    head_moving = abs(head_driver.sent_frac - frac_before) > HEAD_MOVING_FRAC_THRESHOLD
-                    blink_driver.update(dt, head_moving=head_moving)
-                    blink_was_on = True
-                elif blink_was_on:
-                    blink_driver.reset()  # 刚被关掉: 强制睁眼, 不留在半闭状态
-                    blink_was_on = False
 
-            draw_overlay(frame, tracks, registry, decision)
+            draw_overlay(frame, tracks, registry, decision,
+                        sound=sound, sig_params=sig_params, weights=weights, now=now)
 
             fps_count += 1
             if time.time() - fps_t0 >= 1.0:
@@ -1140,7 +1171,7 @@ def main() -> int:
                                     camera_source=current_source, head_error=head_error,
                                     mic_connected=doa_reader is not None and doa_reader.last_error() is None,
                                     mic_error=doa_reader.last_error() if doa_reader is not None else mic_error,
-                                    blink_desired=SHARED.blink_desired(),
+                                    eye_first_desired=SHARED.eye_first_desired(),
                                     sound_orient_bearing=orient_bearing)
                 SHARED.update(buf.tobytes(), state)
     except KeyboardInterrupt:
@@ -1162,8 +1193,6 @@ def main() -> int:
                         break
                     time.sleep(0.05)
                 head_driver.center()
-                if blink_driver is not None:
-                    blink_driver.reset()  # 退出前也让眼睛停在睁眼状态
             except Exception:  # noqa: BLE001 — 退出路径, 舵机服务可能已经断线, 不因为回中失败而卡住退出
                 pass
         if head_client is not None:

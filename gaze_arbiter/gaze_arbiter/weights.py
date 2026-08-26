@@ -27,11 +27,10 @@ class WeightConfig:
     w_sound: float = 2.0         # 声源方向匹配
     w_facing: float = 1.2        # 面朝机器人
     w_speaking: float = 1.0      # 正在说话(辅助, 常跟 sound 联动)
-    w_chat_target: float = 3.0   # 语义判定出的聊天对象(给最高权重, 对应"要聊天的对象权重高")
 
     def total_weight(self) -> float:
         return (self.w_size + self.w_novelty + self.w_sound
-                + self.w_facing + self.w_speaking + self.w_chat_target)
+                + self.w_facing + self.w_speaking)
 
 
 @dataclass
@@ -44,7 +43,6 @@ class InterestBreakdown:
     sound: float
     facing: float
     speaking: float
-    chat_target: float
 
 
 def compute_interest(
@@ -60,7 +58,6 @@ def compute_interest(
     s_sound = signals.sound_direction_score(p, sound, sig_params)
     s_facing = signals.facing_score(p)
     s_speak = signals.speaking_score(p)
-    s_chat = signals.chat_target_score(p, now)
 
     total_w = weights.total_weight()
     if total_w <= 0:
@@ -72,7 +69,6 @@ def compute_interest(
             + weights.w_sound * s_sound
             + weights.w_facing * s_facing
             + weights.w_speaking * s_speak
-            + weights.w_chat_target * s_chat
         ) / total_w
 
     total = max(MIN_INTEREST_FLOOR, min(1.0, combined))
@@ -84,7 +80,6 @@ def compute_interest(
         sound=s_sound,
         facing=s_facing,
         speaking=s_speak,
-        chat_target=s_chat,
     )
 
 

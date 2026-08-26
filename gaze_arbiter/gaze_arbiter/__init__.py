@@ -5,12 +5,13 @@
 droidcore-temp/src/decision/interest 的 InterestPointList 思路一致
 (权重加权抽样 + fixation 时长按权重插值 + 看过降权), 但补上了
 droidcore-temp 目前还没有的几个信号: 脸部大小、声源方向匹配、
-朝向机器人程度、语义/对话目标判定。
+朝向机器人程度。
 
 后续如果要接入真实系统, 大概率是把这里的 Person/PersonRegistry 换成
-真实检测器喂数据、把 SoundContext 换成 sound_localization 的实时输出、
-把 chat_target 换成 nlu_intent 的分类结果, 核心的 signals/weights/scheduler
-三层不需要动。
+真实检测器喂数据、把 SoundContext 换成 sound_localization 的实时输出,
+核心的 signals/weights/scheduler 三层不需要动。`PersonRegistry.set_chat_target`
+这套语义判定的写入接口还留着, 但已经不参与打分, 以后要接 nlu_intent
+的话除了喂数据, 还得先把它重新接回 weights.py 的打分公式里。
 """
 from .person import Person
 from .registry import PersonRegistry

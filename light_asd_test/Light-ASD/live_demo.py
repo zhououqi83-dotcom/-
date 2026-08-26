@@ -181,12 +181,21 @@ class FaceTrack:
         self.last_score = 0.0
         self.last_update = 0.0
         self.missed = 0
+        self.hits = 1   # 连续命中帧数(缺一帧就清零, 见 mark_missed)，
+                         # 下游(gaze_arbiter)靠这个过滤"只出现一帧就消失"的误检
 
     def update(self, face):
         self.bbox = face['bbox']
         self.yaw = face['yaw']
         self.pitch = face['pitch']
         self.mouth_open = face['mouth_open']
+        self.hits += 1
+
+    def mark_missed(self):
+        """这一帧没匹配上检测框: 记一次 miss, 并把"连续命中"清零——
+        误检往往一闪而过, 断档过一次就不该再算进"确认过的脸"里。"""
+        self.missed += 1
+        self.hits = 0
 
 
 def match_tracks(tracks, detections):
@@ -273,7 +282,7 @@ def main():
                     tracks[ti].video_buf.append(gray)
             for ti, t in enumerate(tracks):
                 if ti not in used_t:
-                    t.missed += 1
+                    t.mark_missed()
             tracks = [t for t in tracks if t.missed <= MAX_MISSED]
             for di in unmatched_dets:
                 nt = FaceTrack(detections[di])

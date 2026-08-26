@@ -10,7 +10,6 @@
     sound_direction_score — "声源方向权重高"
     facing_score          — "面朝机器人的人权重高"
     speaking_score        — 辅助信号: 正在说话(配合 sound_direction 一起判断谁在讲话)
-    chat_target_score     — "要聊天的对象权重高"(语义判定的落地结果, 见 SemanticContext)
 """
 from __future__ import annotations
 
@@ -93,14 +92,6 @@ def speaking_score(p: Person) -> float:
     return 1.0 if p.is_speaking else 0.0
 
 
-def chat_target_score(p: Person, now: float) -> float:
-    """"要聊天的对象权重高" —— 由外部语义/对话管理模块(nlu_intent 的分类结果
-    + 对话状态机)判定"现在在跟谁说话", 写入 Person.is_chat_target。这里只读
-    这个标记, 不做语义判断本身(语义模型的输入输出跟人脸完全是两个模态,
-    强行揉进这个模块只会让两边都难测)。"""
-    return 1.0 if p.chat_target_active(now=now) else 0.0
-
-
 __all__ = [
     "SoundContext",
     "SignalParams",
@@ -109,5 +100,4 @@ __all__ = [
     "sound_direction_score",
     "facing_score",
     "speaking_score",
-    "chat_target_score",
 ]

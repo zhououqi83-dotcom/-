@@ -9,7 +9,7 @@
     P1  yaw=-40°  偶尔说话, 脸忽大忽小(模拟走近走远)
     P2  yaw=-10°  经常面朝机器人(专注看它), 脸中等大小, 基本不出声
     P3  yaw=+15°  一直没被特别关注, 用来看"没注视过权重高"能不能把它捞出来
-    P4  yaw=+50°  偶尔被判定为"聊天对象"(模拟语义模块识别出"在跟他对话")
+    P4  yaw=+50°  跟 P3 类似, 全程没有额外信号加成
 
 运行:
     python examples/simulate.py
@@ -37,17 +37,16 @@ PEOPLE = {
     1: {"yaw": -40.0, "label": "P1(会时不时说话)"},
     2: {"yaw": -10.0, "label": "P2(一直盯着机器人)"},
     3: {"yaw": 15.0, "label": "P3(全程没人理)"},
-    4: {"yaw": 50.0, "label": "P4(偶尔被判定为聊天对象)"},
+    4: {"yaw": 50.0, "label": "P4(全程没人理)"},
 }
 
 
-def build_frame(now: float, registry: PersonRegistry, chat_target_person_id: dict) -> SoundContext:
+def build_frame(now: float, registry: PersonRegistry) -> SoundContext:
     """模拟这一帧的感知输入: 人脸检测结果 + 当前声源方向.
 
     真实系统里这些字段分别来自:
       face_area_frac / facing_score → 摄像头人脸检测 + light_asd_test/6DRepNet360 头部姿态
       is_speaking                    → light_asd_test (Light-ASD active speaker detection)
-      chat_target                    → nlu_intent 分类结果 + 对话管理器
       SoundContext.doa_deg            → sound_localization (需先转换到机器人本体系角度)
     """
     speaker_id = 1 if int(now / 8) % 3 == 0 else None  # P1 每隔一阵说一段话
@@ -72,15 +71,6 @@ def build_frame(now: float, registry: PersonRegistry, chat_target_person_id: dic
             now=now,
         )
 
-    # 语义模块偶尔"认定"正在跟 P4 聊天(独立于是谁在发声, 模拟"看内容判断对象"的场景)
-    if int(now / 15) % 2 == 1 and not chat_target_person_id.get("active"):
-        p4 = registry.find_by_track(4)
-        if p4 is not None:
-            registry.set_chat_target(p4.person_id, duration_s=6.0, now=now)
-            chat_target_person_id["active"] = True
-    if int(now / 15) % 2 == 0:
-        chat_target_person_id["active"] = False
-
     sound = SoundContext(doa_deg=None)
     if speaker_id is not None:
         p = registry.find_by_track(speaker_id)
@@ -95,14 +85,13 @@ def main() -> None:
                               rng=random.Random(7))
     sig_params = SignalParams()
     weights = WeightConfig()
-    chat_flag: dict = {}
 
-    print(f"{'t(s)':>6} {'看谁':<28} {'时长':>5} {'原因':<8} 权重构成(size/novelty/sound/facing/speak/chat)")
+    print(f"{'t(s)':>6} {'看谁':<28} {'时长':>5} {'原因':<8} 权重构成(size/novelty/sound/facing/speak)")
     print("-" * 100)
 
     now = 0.0
     while now < SIM_DURATION_S:
-        sound = build_frame(now, registry, chat_flag)
+        sound = build_frame(now, registry)
         decision = scheduler.tick(registry, sound=sound, sig_params=sig_params,
                                   weights=weights, now=now)
 
@@ -111,7 +100,7 @@ def main() -> None:
         bd = decision.breakdown
         bd_str = "" if bd is None else (
             f"{bd.size:.2f}/{bd.novelty:.2f}/{bd.sound:.2f}/"
-            f"{bd.facing:.2f}/{bd.speaking:.2f}/{bd.chat_target:.2f} (total={bd.total:.2f})"
+            f"{bd.facing:.2f}/{bd.speaking:.2f} (total={bd.total:.2f})"
         )
         if decision.is_new:
             print(f"{now:6.1f} {label:<28} {decision.duration_s:5.1f} {decision.reason:<8} {bd_str}")
