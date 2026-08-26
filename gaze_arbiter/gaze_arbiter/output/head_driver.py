@@ -83,6 +83,10 @@ class HeadDriverConfig:
     smoothing: float = 0.25      # EMA 系数, 越小越平滑但越滞后
     max_speed: float = 0.4       # 最高转动速度, 归一化值/秒(保护舵机, 2026-08-14 从 0.6 调低)
     channel: str = "head_yao"    # 舵机通道, 见 head-sdk-face 的 servoConfig_25DV3_Ula.yaml
+    # eye_first 关掉时(没有眼珠兜底小幅度), 残差在这个范围内直接忽略、头不动——
+    # 否则人脸检测的抖动/目标的小幅自然晃动会被 100% 转成头部动作, 显得"过度扭头"。
+    # 比 eye_only_deg(12°)小, 因为这里没有眼珠去覆盖这段残差, 死区太大会显得迟钝。
+    head_dead_zone_deg: float = 5.0
 
     # ── 眼动优先(小幅度只转眼珠, 大幅度眼珠回中再转头) ──────────────────
     # 模仿人的注视方式: 目标只偏一点点时人不会扭脖子, 只瞟一眼; 偏得多了才
@@ -206,7 +210,16 @@ class HeadDriver:
         )
 
         if not self.cfg.eye_first:
-            # 原来的行为: 只转头, 不碰眼珠.
+            # 只转头, 不碰眼珠——但残差在死区内就完全不动, 不然人脸检测的抖动
+            # /目标的小幅自然晃动会被 100% 转成头部动作, 显得"过度扭头"。
+            head_yaw_now = frac_to_yaw(
+                self._sent_frac, fov_deg=self.cfg.fov_deg, invert=self.cfg.invert,
+                min_frac=self.cfg.min_frac, max_frac=self.cfg.max_frac,
+            )
+            residual = yaw_deg - head_yaw_now
+            if abs(residual) <= self.cfg.head_dead_zone_deg:
+                self._ema_frac = self._sent_frac  # 冻住, 避免死区内偷偷积累漂移
+                return self._sent_frac
             self._ema_frac = self.cfg.smoothing * target_frac + (1 - self.cfg.smoothing) * self._ema_frac
             self._sent_frac = _slew_limit(self._sent_frac, self._ema_frac, self.cfg.max_speed * dt)
             self._head.set_servo_positions({self.cfg.channel: round(self._sent_frac, 3)})

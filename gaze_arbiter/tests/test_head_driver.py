@@ -98,3 +98,33 @@ def test_head_driver_recenter_slowly_returns_to_center():
     assert steps >= 3  # 分多步, 不是瞬间跳回
     assert abs(driver.sent_frac - 0.5) < 1e-3
     assert client.last_positions["head_yao"] == 0.5
+
+
+def test_head_driver_no_eye_first_ignores_small_residual():
+    """eye_first 关掉时, 残差在死区(head_dead_zone_deg)以内应该完全不动头,
+    不发指令——否则人脸检测的小幅抖动会被 100% 转成头部动作, 显得"过度扭头"。"""
+    client = FakeHeadClient()
+    cfg = HeadDriverConfig(eye_first=False, smoothing=1.0, max_speed=2.0,
+                          head_dead_zone_deg=5.0)
+    driver = HeadDriver(client, cfg)
+    driver.center()
+    client.call_count = 0  # center() 本身会发一次, 归零后只看 update() 的行为
+
+    # fov=90° 时 4° 残差 < 5° 死区, 应该完全不发指令、位置不变
+    sent = driver.update(4.0, dt=0.1)
+    assert sent == 0.5
+    assert client.call_count == 0
+
+
+def test_head_driver_no_eye_first_still_tracks_beyond_dead_zone():
+    """死区以外(残差 > head_dead_zone_deg)要正常追过去, 死区只挡小幅度,
+    不是把头完全锁死。"""
+    client = FakeHeadClient()
+    cfg = HeadDriverConfig(eye_first=False, smoothing=1.0, max_speed=2.0,
+                          head_dead_zone_deg=5.0)
+    driver = HeadDriver(client, cfg)
+    driver.center()
+
+    sent = driver.update(20.0, dt=0.5)  # 残差 20° > 5° 死区
+    assert sent > 0.5
+    assert abs(client.last_positions["head_yao"] - sent) < 1e-3  # 发送值四舍五入到3位小数
